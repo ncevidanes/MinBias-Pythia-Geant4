@@ -1,0 +1,19 @@
+! Minimum-bias inelástico pp para o pool de pile-up.
+! O número de bunch crossings é controlado pelo Geant4.
+
+Beams:idA = 2212
+Beams:idB = 2212
+Beams:eCM = 14000.
+
+SoftQCD:inelastic = on
+
+Init:showChangedSettings = on
+Init:showChangedParticleData = off
+Next:numberCount = 1000
+Next:numberShowInfo = 1
+Next:numberShowProcess = 0
+Next:numberShowEvent = 0
+
+! A semente é sobrescrita por trabalhador a partir de seed_base.
+Random:setSeed = on
+
