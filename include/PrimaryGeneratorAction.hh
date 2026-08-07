@@ -2,6 +2,7 @@
 #define PYTHIAGEANT_PRIMARYGENERATORACTION_HH
 
 #include "Configuration.hh"
+#include "ParticleDecision.hh"
 
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "Pythia8/Pythia.h"
@@ -22,8 +23,8 @@ class PrimaryGeneratorAction final
  private:
   int DrawInteractionCount();
   double DrawGaussian(double sigma);
-  void AuditPythiaEvent(int eventId, int bcid, int subevent);
-  bool IsNeutrino(int pdg) const;
+  void AuditPythiaParticle(int eventId, int bcid, int subevent, int index,
+                           ParticleRejectionCode rejectionCode);
 
   Configuration configuration_;
   Pythia8::Pythia pythia_;

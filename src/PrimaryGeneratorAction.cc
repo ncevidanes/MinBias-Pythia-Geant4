@@ -72,47 +72,41 @@ double PrimaryGeneratorAction::DrawGaussian(const double sigma) {
   return distribution(random_);
 }
 
-bool PrimaryGeneratorAction::IsNeutrino(const int pdg) const {
-  const int absolute = std::abs(pdg);
-  return absolute == 12 || absolute == 14 || absolute == 16 ||
-         absolute == 18;
-}
-
-void PrimaryGeneratorAction::AuditPythiaEvent(const int eventId,
-                                              const int bcid,
-                                              const int subevent) {
+void PrimaryGeneratorAction::AuditPythiaParticle(
+    const int eventId, const int bcid, const int subevent, const int index,
+    const ParticleRejectionCode rejectionCode) {
   if (!configuration_.generatorAudit) {
     return;
   }
 
-  for (int index = 0; index < pythia_.event.size(); ++index) {
-    const auto& particle = pythia_.event[index];
-    RootOutput::WriteGeneratorParticle(GeneratorParticleRecord{
-        eventId,
-        bcid,
-        subevent,
-        index,
-        particle.id(),
-        particle.status(),
-        particle.mother1(),
-        particle.mother2(),
-        particle.daughter1(),
-        particle.daughter2(),
-        particle.isFinal() ? 1 : 0,
-        particle.isVisible() ? 1 : 0,
-        particle.px(),
-        particle.py(),
-        particle.pz(),
-        particle.e(),
-        particle.m(),
-        particle.eta(),
-        particle.phi(),
-        particle.xProd(),
-        particle.yProd(),
-        particle.zProd(),
-        particle.tProd(),
-    });
-  }
+  const auto& particle = pythia_.event[index];
+  RootOutput::WriteGeneratorParticle(GeneratorParticleRecord{
+      eventId,
+      bcid,
+      subevent,
+      index,
+      particle.id(),
+      particle.status(),
+      particle.mother1(),
+      particle.mother2(),
+      particle.daughter1(),
+      particle.daughter2(),
+      particle.isFinal() ? 1 : 0,
+      particle.isVisible() ? 1 : 0,
+      particle.px(),
+      particle.py(),
+      particle.pz(),
+      particle.e(),
+      particle.m(),
+      particle.eta(),
+      particle.phi(),
+      particle.xProd(),
+      particle.yProd(),
+      particle.zProd(),
+      particle.tProd(),
+      rejectionCode == ParticleRejectionCode::kAccepted ? 1 : 0,
+      static_cast<int>(rejectionCode),
+  });
 }
 
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
@@ -132,7 +126,6 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
     }
     ++state.generatedInteractions;
     state.generatorParticles += pythia_.event.size();
-    AuditPythiaEvent(eventId, bcid, subevent);
 
     const double collisionXmm =
         DrawGaussian(configuration_.beamSigmaXmm);
@@ -145,27 +138,30 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
 
     for (int index = 0; index < pythia_.event.size(); ++index) {
       const auto& particle = pythia_.event[index];
-      if (!particle.isFinal() || !particle.isVisible()) {
-        continue;
-      }
-      if (!configuration_.transportNeutrinos &&
-          IsNeutrino(particle.id())) {
-        continue;
-      }
-      if (std::abs(particle.eta()) > configuration_.maxAbsEta) {
-        continue;
-      }
-
       G4ParticleDefinition* definition =
           particleTable->FindParticle(particle.id());
-      if (definition == nullptr) {
-        ++state.unknownPdgParticles;
+
+      ParticleDecisionInput decisionInput;
+      decisionInput.isFinal = particle.isFinal();
+      decisionInput.isVisible = particle.isVisible();
+      decisionInput.transportNeutrinos = configuration_.transportNeutrinos;
+      decisionInput.hasGeantDefinition = definition != nullptr;
+      decisionInput.pdg = particle.id();
+      decisionInput.eta = particle.eta();
+      decisionInput.maxAbsEta = configuration_.maxAbsEta;
+
+      const ParticleRejectionCode rejectionCode =
+          ClassifyParticle(decisionInput);
+      state.RecordGeneratorDecision(rejectionCode);
+      AuditPythiaParticle(eventId, bcid, subevent, index, rejectionCode);
+
+      if (rejectionCode != ParticleRejectionCode::kAccepted) {
         continue;
       }
 
       auto* primary = new G4PrimaryParticle(
           definition, particle.px() * GeV, particle.py() * GeV,
-          particle.pz() * GeV);
+          particle.pz() * GeV, particle.e() * GeV);
       primary->SetUserInformation(
           new PrimaryLineageInfo(subevent, particle.id()));
 

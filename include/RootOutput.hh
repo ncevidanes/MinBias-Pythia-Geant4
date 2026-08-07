@@ -29,6 +29,8 @@ struct GeneratorParticleRecord {
   double yProdMm = 0.0;
   double zProdMm = 0.0;
   double tProdMmOverC = 0.0;
+  int acceptedForTransport = 0;
+  int rejectionCode = 0;
 };
 
 class RootOutput {

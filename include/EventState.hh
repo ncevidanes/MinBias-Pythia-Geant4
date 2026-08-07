@@ -1,6 +1,8 @@
 #ifndef PYTHIAGEANT_EVENTSTATE_HH
 #define PYTHIAGEANT_EVENTSTATE_HH
 
+#include "ParticleDecision.hh"
+
 #include <map>
 
 namespace pg {
@@ -35,6 +37,7 @@ class EventState {
   static EventState& Instance();
 
   void Reset(int eventIdValue, int bcidValue);
+  void RecordGeneratorDecision(ParticleRejectionCode rejectionCode);
   void RecordDeposit(const CellKey& key, int subdetector, double cellId,
                      double etaCenter, double phiCenter, double energyMeV,
                      double timeNs, int pdg, int trackId, int parentId);
@@ -47,6 +50,11 @@ class EventState {
   int generatorParticles = 0;
   int transportedParticles = 0;
   int unknownPdgParticles = 0;
+  int rejectedNotFinal = 0;
+  int rejectedNeutrinoDisabled = 0;
+  int rejectedInvisibleNonNeutrino = 0;
+  int rejectedOutsideEtaAcceptance = 0;
+  int unlineagedSteps = 0;
   std::map<CellKey, CellDeposit> deposits;
 
  private:

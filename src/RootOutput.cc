@@ -35,6 +35,11 @@ void RootOutput::Book() {
   analysis->CreateNtupleIColumn("transported_particles");
   analysis->CreateNtupleIColumn("unknown_pdg_particles");
   analysis->CreateNtupleDColumn("total_edep_mev");
+  analysis->CreateNtupleIColumn("rejected_not_final");
+  analysis->CreateNtupleIColumn("rejected_neutrino_disabled");
+  analysis->CreateNtupleIColumn("rejected_invisible_non_neutrino");
+  analysis->CreateNtupleIColumn("rejected_outside_eta_acceptance");
+  analysis->CreateNtupleIColumn("unlineaged_steps");
   analysis->FinishNtuple();
 
   analysis->CreateNtuple("hits", "Cell deposits by subevent");
@@ -84,6 +89,8 @@ void RootOutput::Book() {
   analysis->CreateNtupleDColumn("y_prod_mm");
   analysis->CreateNtupleDColumn("z_prod_mm");
   analysis->CreateNtupleDColumn("t_prod_mm_over_c");
+  analysis->CreateNtupleIColumn("accepted_for_transport");
+  analysis->CreateNtupleIColumn("rejection_code");
   analysis->FinishNtuple();
 }
 
@@ -130,6 +137,10 @@ void RootOutput::WriteGeneratorParticle(
   analysis->FillNtupleDColumn(kGeneratorNtuple, 22, record.zProdMm);
   analysis->FillNtupleDColumn(kGeneratorNtuple, 23,
                               record.tProdMmOverC);
+  analysis->FillNtupleIColumn(kGeneratorNtuple, 24,
+                              record.acceptedForTransport);
+  analysis->FillNtupleIColumn(kGeneratorNtuple, 25,
+                              record.rejectionCode);
   analysis->AddNtupleRow(kGeneratorNtuple);
 }
 
@@ -157,6 +168,14 @@ void RootOutput::WriteEventAndHits(const Configuration& configuration) {
   analysis->FillNtupleIColumn(kEventsNtuple, 8, state.transportedParticles);
   analysis->FillNtupleIColumn(kEventsNtuple, 9, state.unknownPdgParticles);
   analysis->FillNtupleDColumn(kEventsNtuple, 10, totalEnergyMeV);
+  analysis->FillNtupleIColumn(kEventsNtuple, 11, state.rejectedNotFinal);
+  analysis->FillNtupleIColumn(kEventsNtuple, 12,
+                              state.rejectedNeutrinoDisabled);
+  analysis->FillNtupleIColumn(kEventsNtuple, 13,
+                              state.rejectedInvisibleNonNeutrino);
+  analysis->FillNtupleIColumn(kEventsNtuple, 14,
+                              state.rejectedOutsideEtaAcceptance);
+  analysis->FillNtupleIColumn(kEventsNtuple, 15, state.unlineagedSteps);
   analysis->AddNtupleRow(kEventsNtuple);
 
   for (const auto& [key, deposit] : state.deposits) {

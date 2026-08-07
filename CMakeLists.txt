@@ -74,4 +74,25 @@ target_link_libraries(
     ${PYTHIA8_LIBS}
 )
 
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(
+    particle_decision_test
+    tests/ParticleDecisionTest.cc
+  )
+  target_include_directories(
+    particle_decision_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    particle_decision_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  add_test(NAME particle_decision COMMAND particle_decision_test)
+endif()
+
 install(TARGETS pythia_geant RUNTIME DESTINATION bin)

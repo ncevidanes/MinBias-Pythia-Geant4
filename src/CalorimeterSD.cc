@@ -45,7 +45,7 @@ G4bool CalorimeterSD::ProcessHits(G4Step* step,
   const auto* preStep = step->GetPreStepPoint();
   const G4ThreeVector& position = preStep->GetPosition();
   const double eta = Pseudorapidity(position);
-  if (std::abs(eta) >= sampling_.maxAbsEta) {
+  if (std::abs(eta) > sampling_.maxAbsEta) {
     return false;
   }
 
@@ -77,12 +77,17 @@ G4bool CalorimeterSD::ProcessHits(G4Step* step,
   const int subevent = lineage ? lineage->Subevent() : -1;
   const int pdg = track->GetParticleDefinition()->GetPDGEncoding();
 
+  EventState& state = EventState::Instance();
+  if (lineage == nullptr) {
+    ++state.unlineagedSteps;
+  }
+
   const CellKey key{subevent, sampling_.id, side, etaIndex, phiIndex};
   const double cellId =
       sampling_.id * 100000000.0 + (side + 1) * 10000000.0 +
       etaIndex * 1000.0 + phiIndex;
 
-  EventState::Instance().RecordDeposit(
+  state.RecordDeposit(
       key, static_cast<int>(sampling_.subdetector), cellId, etaCenter,
       phiCenter, energyMeV, preStep->GetGlobalTime() / ns, pdg,
       track->GetTrackID(), track->GetParentID());

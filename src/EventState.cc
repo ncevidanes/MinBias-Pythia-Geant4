@@ -25,7 +25,35 @@ void EventState::Reset(const int eventIdValue, const int bcidValue) {
   generatorParticles = 0;
   transportedParticles = 0;
   unknownPdgParticles = 0;
+  rejectedNotFinal = 0;
+  rejectedNeutrinoDisabled = 0;
+  rejectedInvisibleNonNeutrino = 0;
+  rejectedOutsideEtaAcceptance = 0;
+  unlineagedSteps = 0;
   deposits.clear();
+}
+
+void EventState::RecordGeneratorDecision(
+    const ParticleRejectionCode rejectionCode) {
+  switch (rejectionCode) {
+    case ParticleRejectionCode::kAccepted:
+      break;
+    case ParticleRejectionCode::kNotFinal:
+      ++rejectedNotFinal;
+      break;
+    case ParticleRejectionCode::kNeutrinoDisabled:
+      ++rejectedNeutrinoDisabled;
+      break;
+    case ParticleRejectionCode::kInvisibleNonNeutrino:
+      ++rejectedInvisibleNonNeutrino;
+      break;
+    case ParticleRejectionCode::kOutsideEtaAcceptance:
+      ++rejectedOutsideEtaAcceptance;
+      break;
+    case ParticleRejectionCode::kUnknownPdg:
+      ++unknownPdgParticles;
+      break;
+  }
 }
 
 void EventState::RecordDeposit(const CellKey& key, const int subdetector,
