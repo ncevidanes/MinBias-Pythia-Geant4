@@ -46,6 +46,7 @@ add_executable(
   app/main.cc
   src/ActionInitialization.cc
   src/CalorimeterSD.cc
+  src/CellSegmentation.cc
   src/Configuration.cc
   src/DetectorConstruction.cc
   src/EventAction.cc
@@ -93,6 +94,26 @@ if(BUILD_TESTING)
       -Wpedantic
   )
   add_test(NAME particle_decision COMMAND particle_decision_test)
+
+  add_executable(
+    cell_segmentation_test
+    tests/CellSegmentationTest.cc
+    src/CellSegmentation.cc
+    src/Sampling.cc
+  )
+  target_include_directories(
+    cell_segmentation_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    cell_segmentation_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  add_test(NAME cell_segmentation COMMAND cell_segmentation_test)
 endif()
 
 install(TARGETS pythia_geant RUNTIME DESTINATION bin)

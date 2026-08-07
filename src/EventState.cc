@@ -30,6 +30,7 @@ void EventState::Reset(const int eventIdValue, const int bcidValue) {
   rejectedInvisibleNonNeutrino = 0;
   rejectedOutsideEtaAcceptance = 0;
   unlineagedSteps = 0;
+  segmentationFailures = 0;
   deposits.clear();
 }
 
@@ -57,7 +58,7 @@ void EventState::RecordGeneratorDecision(
 }
 
 void EventState::RecordDeposit(const CellKey& key, const int subdetector,
-                               const double cellId, const double etaCenter,
+                               const CellId cellId, const double etaCenter,
                                const double phiCenter, const double energyMeV,
                                const double timeNs, const int pdg,
                                const int trackId, const int parentId) {

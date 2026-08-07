@@ -1,7 +1,7 @@
 #ifndef PYTHIAGEANT_CALORIMETERSD_HH
 #define PYTHIAGEANT_CALORIMETERSD_HH
 
-#include "Sampling.hh"
+#include "CellSegmentation.hh"
 
 #include "G4VSensitiveDetector.hh"
 
@@ -17,7 +17,7 @@ class CalorimeterSD final : public G4VSensitiveDetector {
   G4bool ProcessHits(G4Step* step, G4TouchableHistory* history) override;
 
  private:
-  Sampling sampling_;
+  CellSegmentation segmentation_;
 };
 
 }  // namespace pg

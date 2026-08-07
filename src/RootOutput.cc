@@ -15,6 +15,9 @@ constexpr int kEventsNtuple = 0;
 constexpr int kHitsNtuple = 1;
 constexpr int kGeneratorNtuple = 2;
 
+static_assert(kMaxPackedCellId < (CellId{1} << 53),
+              "Packed cell IDs must be exactly representable as doubles.");
+
 }  // namespace
 
 void RootOutput::Book() {
@@ -40,6 +43,7 @@ void RootOutput::Book() {
   analysis->CreateNtupleIColumn("rejected_invisible_non_neutrino");
   analysis->CreateNtupleIColumn("rejected_outside_eta_acceptance");
   analysis->CreateNtupleIColumn("unlineaged_steps");
+  analysis->CreateNtupleIColumn("segmentation_failures");
   analysis->FinishNtuple();
 
   analysis->CreateNtuple("hits", "Cell deposits by subevent");
@@ -176,6 +180,8 @@ void RootOutput::WriteEventAndHits(const Configuration& configuration) {
   analysis->FillNtupleIColumn(kEventsNtuple, 14,
                               state.rejectedOutsideEtaAcceptance);
   analysis->FillNtupleIColumn(kEventsNtuple, 15, state.unlineagedSteps);
+  analysis->FillNtupleIColumn(kEventsNtuple, 16,
+                              state.segmentationFailures);
   analysis->AddNtupleRow(kEventsNtuple);
 
   for (const auto& [key, deposit] : state.deposits) {
@@ -188,7 +194,8 @@ void RootOutput::WriteEventAndHits(const Configuration& configuration) {
     analysis->FillNtupleIColumn(kHitsNtuple, 1, state.eventId);
     analysis->FillNtupleIColumn(kHitsNtuple, 2, state.bcid);
     analysis->FillNtupleIColumn(kHitsNtuple, 3, key.subevent);
-    analysis->FillNtupleDColumn(kHitsNtuple, 4, deposit.cellId);
+    analysis->FillNtupleDColumn(kHitsNtuple, 4,
+                                static_cast<double>(deposit.cellId));
     analysis->FillNtupleIColumn(kHitsNtuple, 5, deposit.subdetector);
     analysis->FillNtupleIColumn(kHitsNtuple, 6, key.sampling);
     analysis->FillNtupleIColumn(kHitsNtuple, 7, key.side);

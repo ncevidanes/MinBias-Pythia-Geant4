@@ -39,7 +39,7 @@ std::vector<Sampling> MakeBarrelSamplings() {
       1500.0,
       3400.0,
       0.0,
-      0.00325,
+      0.003125,
       pi / 32.0,
       1.6,
   };

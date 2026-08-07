@@ -1,6 +1,7 @@
 #ifndef PYTHIAGEANT_EVENTSTATE_HH
 #define PYTHIAGEANT_EVENTSTATE_HH
 
+#include "CellSegmentation.hh"
 #include "ParticleDecision.hh"
 
 #include <map>
@@ -19,7 +20,7 @@ struct CellKey {
 
 struct CellDeposit {
   int subdetector = -1;
-  double cellId = -1.0;
+  CellId cellId = 0;
   double etaCenter = 0.0;
   double phiCenter = 0.0;
   double energyMeV = 0.0;
@@ -38,7 +39,7 @@ class EventState {
 
   void Reset(int eventIdValue, int bcidValue);
   void RecordGeneratorDecision(ParticleRejectionCode rejectionCode);
-  void RecordDeposit(const CellKey& key, int subdetector, double cellId,
+  void RecordDeposit(const CellKey& key, int subdetector, CellId cellId,
                      double etaCenter, double phiCenter, double energyMeV,
                      double timeNs, int pdg, int trackId, int parentId);
 
@@ -55,6 +56,7 @@ class EventState {
   int rejectedInvisibleNonNeutrino = 0;
   int rejectedOutsideEtaAcceptance = 0;
   int unlineagedSteps = 0;
+  int segmentationFailures = 0;
   std::map<CellKey, CellDeposit> deposits;
 
  private:

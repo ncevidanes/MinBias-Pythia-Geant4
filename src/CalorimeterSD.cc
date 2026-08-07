@@ -10,7 +10,6 @@
 #include "G4ThreeVector.hh"
 #include "G4Track.hh"
 
-#include <algorithm>
 #include <cmath>
 #include <utility>
 
@@ -33,7 +32,7 @@ double Pseudorapidity(const G4ThreeVector& position) {
 }  // namespace
 
 CalorimeterSD::CalorimeterSD(const G4String& name, Sampling sampling)
-    : G4VSensitiveDetector(name), sampling_(std::move(sampling)) {}
+    : G4VSensitiveDetector(name), segmentation_(std::move(sampling)) {}
 
 G4bool CalorimeterSD::ProcessHits(G4Step* step,
                                   G4TouchableHistory* /*history*/) {
@@ -45,31 +44,17 @@ G4bool CalorimeterSD::ProcessHits(G4Step* step,
   const auto* preStep = step->GetPreStepPoint();
   const G4ThreeVector& position = preStep->GetPosition();
   const double eta = Pseudorapidity(position);
-  if (std::abs(eta) > sampling_.maxAbsEta) {
+  const Sampling& sampling = segmentation_.Definition();
+  if (std::abs(eta) > sampling.maxAbsEta) {
     return false;
   }
 
-  constexpr double pi = 3.14159265358979323846;
-  const int numberEtaBins =
-      static_cast<int>(std::ceil(2.0 * sampling_.maxAbsEta /
-                                 sampling_.deltaEta));
-  const int numberPhiBins =
-      static_cast<int>(std::lround(2.0 * pi / sampling_.deltaPhi));
-
-  int etaIndex = static_cast<int>(
-      std::floor((eta + sampling_.maxAbsEta) / sampling_.deltaEta));
-  double phi = std::atan2(position.y(), position.x());
-  int phiIndex =
-      static_cast<int>(std::floor((phi + pi) / sampling_.deltaPhi));
-
-  etaIndex = std::clamp(etaIndex, 0, numberEtaBins - 1);
-  phiIndex = std::clamp(phiIndex, 0, numberPhiBins - 1);
-
-  const double etaCenter =
-      -sampling_.maxAbsEta + (etaIndex + 0.5) * sampling_.deltaEta;
-  const double phiCenter = -pi + (phiIndex + 0.5) * sampling_.deltaPhi;
-  const int side =
-      sampling_.zCenterMm < 0.0 ? -1 : (sampling_.zCenterMm > 0.0 ? 1 : 0);
+  const double phi = std::atan2(position.y(), position.x());
+  const auto cell = segmentation_.Locate(eta, phi);
+  if (!cell.has_value()) {
+    ++EventState::Instance().segmentationFailures;
+    return false;
+  }
 
   const auto* track = step->GetTrack();
   const auto* lineage =
@@ -82,14 +67,16 @@ G4bool CalorimeterSD::ProcessHits(G4Step* step,
     ++state.unlineagedSteps;
   }
 
-  const CellKey key{subevent, sampling_.id, side, etaIndex, phiIndex};
-  const double cellId =
-      sampling_.id * 100000000.0 + (side + 1) * 10000000.0 +
-      etaIndex * 1000.0 + phiIndex;
+  const CellKey key{subevent,
+                    cell->address.sampling,
+                    cell->address.side,
+                    cell->address.etaIndex,
+                    cell->address.phiIndex};
 
   state.RecordDeposit(
-      key, static_cast<int>(sampling_.subdetector), cellId, etaCenter,
-      phiCenter, energyMeV, preStep->GetGlobalTime() / ns, pdg,
+      key, static_cast<int>(sampling.subdetector), cell->cellId,
+      cell->etaCenter, cell->phiCenter, energyMeV,
+      preStep->GetGlobalTime() / ns, pdg,
       track->GetTrackID(), track->GetParentID());
 
   return true;
