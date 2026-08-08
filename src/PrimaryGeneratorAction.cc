@@ -3,6 +3,7 @@
 #include "EventState.hh"
 #include "LineageInfo.hh"
 #include "RootOutput.hh"
+#include "SeedPolicy.hh"
 
 #include "G4Event.hh"
 #include "G4Exception.hh"
@@ -21,22 +22,12 @@
 #include <utility>
 
 namespace pg {
-namespace {
-
-int NormalizePythiaSeed(const long long seed) {
-  constexpr long long maximum = 900000000;
-  const long long normalized = ((seed - 1) % maximum + maximum) % maximum + 1;
-  return static_cast<int>(normalized);
-}
-
-}  // namespace
 
 PrimaryGeneratorAction::PrimaryGeneratorAction(Configuration configuration)
     : configuration_(std::move(configuration)) {
-  const int threadId = std::max(0, G4Threading::G4GetThreadId());
-  const int seed = NormalizePythiaSeed(
-      static_cast<long long>(configuration_.seedBase) +
-      104729LL * threadId);
+  const int seed = PythiaSeedForWorker(
+      configuration_.seedBase,
+      G4Threading::G4GetThreadId());
   random_.seed(static_cast<std::mt19937_64::result_type>(seed));
 
   if (!pythia_.readFile(configuration_.pythiaConfig.string())) {

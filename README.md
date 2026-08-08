@@ -45,8 +45,8 @@ limita a geração transportada a `|eta| <= 1.8`.
 - Geant4 11.2 ou superior, compilado com suporte a ROOT para a saída `.root`.
 
 O código é compatível com o ambiente já observado no projeto:
-PYTHIA 8.312 e Geant4 11.3.2. A versão exata carregada deve ser registrada no
-log de cada campanha.
+PYTHIA 8.312 e Geant4 11.3.2. As versões efetivamente carregadas são gravadas
+na TTree `metadata` e devem permanecer também no log de cada campanha.
 
 ## Comando único
 
@@ -83,13 +83,14 @@ BUILD_JOBS=1 ./run.sh config/smoke.conf
 
 ## Saída ROOT
 
-O arquivo contém três TTrees:
+O arquivo contém quatro TTrees:
 
 | TTree | Conteúdo |
 |---|---|
 | `events` | metadados do bunch crossing, \(\mu\), interações sorteadas/geradas, falhas e contagens de partículas |
 | `hits` | energia depositada por `(evento, subevento, célula)`, tempo médio ponderado por energia e maior contribuição individual |
 | `generator` | registro completo do PYTHIA para auditoria; preenchido somente com `generator_audit = true` |
+| `metadata` | uma entrada por execução com configuração normalizada, política de sementes, versões e proveniência |
 
 Campos principais de `hits`:
 
@@ -99,6 +100,24 @@ side, eta_index, phi_index, eta_center, phi_center,
 edep_mev, time_mean_ns, time_first_ns,
 leading_pdg, leading_track_id, leading_parent_id
 ```
+
+A TTree `metadata` possui uma entrada e 34 branches:
+
+```text
+schema_version, project_version, git_commit, git_describe,
+root_version, geant4_version, pythia_version,
+run, events, first_bcid, threads,
+seed_base, geant4_master_seed, pythia_seed_base,
+pythia_worker_seed_stride, pythia_seed_max,
+interaction_mode, mean_interactions, fixed_interactions,
+pythia_config, physics_list, production_cut_mm,
+beam_sigma_x_mm, beam_sigma_y_mm, beam_sigma_z_mm, beam_sigma_t_ns,
+max_abs_eta, transport_neutrinos, generator_audit, check_overlaps,
+print_every, config_file, output_file, normalized_config
+```
+
+Isso permite auditar o arquivo ROOT sem depender do diretório em que a
+simulação foi executada.
 
 Mapeamento de `sampling`:
 
@@ -117,18 +136,27 @@ Mapeamento de `sampling`:
 
 ## Reprodutibilidade
 
-Cada trabalhador recebe uma instância independente do PYTHIA e uma semente
-derivada de `seed_base`. Uma execução é reprodutível quando são mantidos:
+O mestre do Geant4 e cada trabalhador do PYTHIA recebem sementes derivadas de
+`seed_base`. A política normaliza a semente do PYTHIA para seu intervalo válido
+e separa os trabalhadores com `pythia_worker_seed_stride = 104729`, respeitando
+`pythia_seed_max = 900000000`.
 
-- versões de PYTHIA e Geant4;
+Uma execução é reprodutível quando são mantidos:
+
+- versões do projeto, Git, ROOT, Geant4 e PYTHIA;
 - arquivo `.cmnd`;
 - configuração `.conf`;
 - número de threads;
 - `seed_base`;
 - lista de física.
 
-Além do ROOT, o programa grava `<saida>.manifest.txt` com a configuração
-resolvida.
+O número de threads faz parte do contrato porque altera a distribuição dos
+eventos entre as instâncias PYTHIA dos trabalhadores.
+
+Além da TTree `metadata`, incorporada ao ROOT, o programa grava
+`<saida>.manifest.txt` como representação legível da configuração resolvida.
+Os dois registros são complementares: o manifesto facilita a inspeção no
+terminal e `metadata` mantém a proveniência junto aos dados.
 
 ## Inspeção rápida
 

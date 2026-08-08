@@ -1,10 +1,16 @@
 #include "RootOutput.hh"
 
+#include "BuildInfo.hh"
 #include "EventState.hh"
+#include "SeedPolicy.hh"
 
 #include "G4AnalysisManager.hh"
 #include "G4Run.hh"
 #include "G4RunManager.hh"
+
+#ifdef G4MULTITHREADED
+#include "G4Threading.hh"
+#endif
 
 #include <numeric>
 
@@ -14,9 +20,18 @@ namespace {
 constexpr int kEventsNtuple = 0;
 constexpr int kHitsNtuple = 1;
 constexpr int kGeneratorNtuple = 2;
+constexpr int kMetadataNtuple = 3;
 
 static_assert(kMaxPackedCellId < (CellId{1} << 53),
               "Packed cell IDs must be exactly representable as doubles.");
+
+bool IsMetadataWriter() {
+#ifdef G4MULTITHREADED
+  return G4Threading::G4GetThreadId() == 0;
+#else
+  return true;
+#endif
+}
 
 }  // namespace
 
@@ -96,10 +111,131 @@ void RootOutput::Book() {
   analysis->CreateNtupleIColumn("accepted_for_transport");
   analysis->CreateNtupleIColumn("rejection_code");
   analysis->FinishNtuple();
+
+  analysis->CreateNtuple("metadata", "Run configuration and provenance");
+  analysis->CreateNtupleIColumn("schema_version");
+  analysis->CreateNtupleSColumn("project_version");
+  analysis->CreateNtupleSColumn("git_commit");
+  analysis->CreateNtupleSColumn("git_describe");
+  analysis->CreateNtupleSColumn("root_version");
+  analysis->CreateNtupleSColumn("geant4_version");
+  analysis->CreateNtupleSColumn("pythia_version");
+  analysis->CreateNtupleIColumn("run");
+  analysis->CreateNtupleIColumn("events");
+  analysis->CreateNtupleIColumn("first_bcid");
+  analysis->CreateNtupleIColumn("threads");
+  analysis->CreateNtupleIColumn("seed_base");
+  analysis->CreateNtupleIColumn("geant4_master_seed");
+  analysis->CreateNtupleIColumn("pythia_seed_base");
+  analysis->CreateNtupleIColumn("pythia_worker_seed_stride");
+  analysis->CreateNtupleIColumn("pythia_seed_max");
+  analysis->CreateNtupleSColumn("interaction_mode");
+  analysis->CreateNtupleDColumn("mean_interactions");
+  analysis->CreateNtupleIColumn("fixed_interactions");
+  analysis->CreateNtupleSColumn("pythia_config");
+  analysis->CreateNtupleSColumn("physics_list");
+  analysis->CreateNtupleDColumn("production_cut_mm");
+  analysis->CreateNtupleDColumn("beam_sigma_x_mm");
+  analysis->CreateNtupleDColumn("beam_sigma_y_mm");
+  analysis->CreateNtupleDColumn("beam_sigma_z_mm");
+  analysis->CreateNtupleDColumn("beam_sigma_t_ns");
+  analysis->CreateNtupleDColumn("max_abs_eta");
+  analysis->CreateNtupleIColumn("transport_neutrinos");
+  analysis->CreateNtupleIColumn("generator_audit");
+  analysis->CreateNtupleIColumn("check_overlaps");
+  analysis->CreateNtupleIColumn("print_every");
+  analysis->CreateNtupleSColumn("config_file");
+  analysis->CreateNtupleSColumn("output_file");
+  analysis->CreateNtupleSColumn("normalized_config");
+  analysis->FinishNtuple();
 }
 
 void RootOutput::BeginRun(const Configuration& configuration) {
-  G4AnalysisManager::Instance()->OpenFile(configuration.outputFile.string());
+  auto* analysis = G4AnalysisManager::Instance();
+  analysis->OpenFile(configuration.outputFile.string());
+
+  if (IsMetadataWriter()) {
+    WriteMetadata(configuration);
+  }
+}
+
+void RootOutput::WriteMetadata(const Configuration& configuration) {
+  auto* analysis = G4AnalysisManager::Instance();
+
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 0, build::kRootSchemaVersion);
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 1, std::string(build::kProjectVersion));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 2, std::string(build::kGitCommit));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 3, std::string(build::kGitDescribe));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 4, std::string(build::kRootVersion));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 5, std::string(build::kGeant4Version));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 6, std::string(build::kPythiaVersion));
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 7, CurrentRunId());
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 8, configuration.events);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 9, configuration.firstBcid);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 10, configuration.threads);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 11, configuration.seedBase);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 12, configuration.seedBase);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 13, configuration.seedBase);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 14,
+      static_cast<int>(kPythiaWorkerSeedStride));
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 15,
+      static_cast<int>(kPythiaMaximumSeed));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 16, configuration.interactionMode);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 17, configuration.meanInteractions);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 18, configuration.fixedInteractions);
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 19, configuration.pythiaConfig.string());
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 20, configuration.physicsList);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 21, configuration.productionCutMm);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 22, configuration.beamSigmaXmm);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 23, configuration.beamSigmaYmm);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 24, configuration.beamSigmaZmm);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 25, configuration.beamSigmaTns);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 26, configuration.maxAbsEta);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 27,
+      configuration.transportNeutrinos ? 1 : 0);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 28,
+      configuration.generatorAudit ? 1 : 0);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 29,
+      configuration.checkOverlaps ? 1 : 0);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 30, configuration.printEvery);
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 31, configuration.sourceFile.string());
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 32, configuration.outputFile.string());
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 33, configuration.NormalizedText());
+  analysis->AddNtupleRow(kMetadataNtuple);
 }
 
 void RootOutput::EndRun() {

@@ -14,9 +14,29 @@ Critérios:
 - PYTHIA inicializa sem configurações desconhecidas;
 - `FTFP_BERT_ATL` é encontrada;
 - não há sobreposições geométricas no smoke test;
-- o ROOT contém `events`, `hits` e `generator`.
+- o ROOT contém `events`, `hits`, `generator` e `metadata`;
+- `metadata` contém exatamente uma entrada e 34 branches;
+- `generator` está preenchida quando `generator_audit = true`.
 
-## 2. Geração
+## 2. Testes de regressão
+
+Após configurar e compilar, executar:
+
+```bash
+ctest --test-dir build-v0 -N
+ctest --test-dir build-v0 --output-on-failure
+```
+
+Devem estar registrados e aprovados:
+
+- `particle_decision`;
+- `cell_segmentation`;
+- `seed_policy`.
+
+O teste `seed_policy` cobre normalização, limites, sementes por trabalhador,
+wrap-around e ausência de colisões no intervalo exercitado pelo teste.
+
+## 3. Geração
 
 Em uma amostra com `generator_audit = true`, verificar:
 
@@ -27,7 +47,7 @@ Em uma amostra com `generator_audit = true`, verificar:
 - simetria de eta e uniformidade de phi;
 - taxa de falhas do `pythia.next()` próxima de zero.
 
-## 3. Transporte unitário
+## 4. Transporte unitário
 
 Antes de minimum-bias em larga escala, acrescente um modo de partículas únicas
 e teste elétrons, fótons e píons em 1, 10 e 100 GeV. Avalie:
@@ -37,7 +57,7 @@ e teste elétrons, fótons e píons em 1, 10 e 100 GeV. Avalie:
 - resposta e resolução por sampling;
 - estabilidade com a production cut.
 
-## 4. Geometria
+## 5. Geometria
 
 Conferir separadamente:
 
@@ -48,18 +68,28 @@ Conferir separadamente:
 - transição barrel/extended barrel;
 - células na fronteira de phi.
 
-## 5. Reprodutibilidade
+## 6. Reprodutibilidade
 
 Executar duas vezes com a mesma configuração e comparar:
 
-- `manifest.txt`;
+- `<saida>.manifest.txt` e a entrada de `metadata`;
 - número de interações;
 - número de partículas transportadas;
 - soma de energia por evento/célula.
 
-Para multithreading, manter também o mesmo número de threads.
+Conferir em `metadata`, no mínimo:
 
-## 6. Produção
+- versões do projeto, Git, ROOT, Geant4 e PYTHIA;
+- `threads`, `seed_base` e sementes derivadas;
+- `pythia_worker_seed_stride` e `pythia_seed_max`;
+- `normalized_config`.
+
+Para multithreading, manter também o mesmo número de threads. Comparações com
+números diferentes de threads validam integridade e proveniência, mas não
+identidade evento a evento, pois muda a distribuição entre os geradores
+PYTHIA dos trabalhadores.
+
+## 7. Produção
 
 Executar primeiro:
 
@@ -74,5 +104,6 @@ Somente depois:
 ./run.sh config/production.conf
 ```
 
-Registrar tempo, memória máxima, tamanho do ROOT e versões das dependências.
-
+Registrar tempo, memória máxima e tamanho do ROOT. Antes de arquivar a campanha,
+confirmar que as versões e a configuração normalizada estão presentes em
+`metadata` e que o manifesto correspondente foi preservado.

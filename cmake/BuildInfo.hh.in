@@ -1,0 +1,18 @@
+#ifndef PYTHIAGEANT_BUILDINFO_HH
+#define PYTHIAGEANT_BUILDINFO_HH
+
+#include <string_view>
+
+namespace pg::build {
+
+inline constexpr int kRootSchemaVersion = 1;
+inline constexpr std::string_view kProjectVersion = "@PROJECT_VERSION@";
+inline constexpr std::string_view kGitCommit = "@PG_GIT_COMMIT@";
+inline constexpr std::string_view kGitDescribe = "@PG_GIT_DESCRIBE@";
+inline constexpr std::string_view kRootVersion = "@PG_ROOT_VERSION@";
+inline constexpr std::string_view kGeant4Version = "@Geant4_VERSION@";
+inline constexpr std::string_view kPythiaVersion = "@PG_PYTHIA_VERSION@";
+
+}  // namespace pg::build
+
+#endif

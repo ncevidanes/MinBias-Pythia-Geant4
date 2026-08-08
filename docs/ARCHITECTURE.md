@@ -15,7 +15,7 @@ O executável único contém este fluxo:
 4. Partículas finais visíveis são convertidas em `G4PrimaryParticle`.
 5. `DetectorConstruction` constrói o calorímetro de amostragem.
 6. `CalorimeterSD` agrega deposições por célula e subevento.
-7. `RootOutput` grava as TTrees.
+7. `RootOutput` grava `events`, `hits`, `generator` e `metadata`.
 
 Não existe arquivo intermediário entre PYTHIA e Geant4.
 
@@ -30,20 +30,23 @@ Não existe arquivo intermediário entre PYTHIA e Geant4.
 | `LineageInfo` / `TrackingAction` | propagação do identificador do subevento |
 | `CalorimeterSD` | scoring e agregação por célula |
 | `EventState` | estado local à thread de um único evento |
-| `RootOutput` | esquema e escrita ROOT |
+| `RootOutput` | esquema ROOT, dados dos eventos e proveniência da execução |
 | `RunAction` / `EventAction` | ciclo de vida do arquivo e dos eventos |
 
 ## Checkpoints
 
-O fluxo principal é em memória. Há dois checkpoints:
+O fluxo principal é em memória. Há três mecanismos de auditoria:
 
-- `<saida>.manifest.txt`: parâmetros resolvidos;
+- `<saida>.manifest.txt`: representação legível dos parâmetros resolvidos;
+- TTree `metadata`: configuração normalizada, sementes, versões e proveniência incorporadas ao ROOT;
 - TTree `generator`: registro completo do PYTHIA, opcional.
 
-Assim, a auditoria pode ser ativada em amostras pequenas sem impor o custo do
-HepMC/CSV a toda campanha. Para intercâmbio com outro simulador, HepMC3 continua
-sendo o formato recomendado; ele não é necessário como contrato interno desta
-execução.
+`metadata` possui uma entrada por execução e é sempre gravada. O manifesto e
+essa TTree descrevem a mesma execução em formatos complementares. A auditoria
+detalhada do gerador pode ser ativada em amostras pequenas sem impor o custo do
+registro completo a toda campanha. Para intercâmbio com outro simulador,
+HepMC3 continua sendo o formato recomendado; ele não é necessário como
+contrato interno desta execução.
 
 ## Multithreading
 
@@ -53,6 +56,12 @@ O Geant4 cria ações por trabalhador. Cada trabalhador recebe:
 - um gerador pseudoaleatório para Poisson e beam spot;
 - um `EventState` thread-local.
 
-O número de threads faz parte da definição reprodutível da campanha. Em
-máquinas com cerca de 7 GiB de RAM, comece com uma ou duas threads.
+`SeedPolicy` deriva de `seed_base` a semente mestre do Geant4 e a semente-base
+do PYTHIA. Para o trabalhador, aplica uma derivação determinística pelo seu
+identificador, com stride `104729`, e normaliza o resultado para o intervalo
+aceito pelo PYTHIA, cujo máximo é `900000000`. Esses parâmetros são persistidos
+em `metadata`.
 
+O número de threads faz parte da definição reprodutível da campanha porque
+determina quantas instâncias e sequências PYTHIA participam da execução. Em
+máquinas com cerca de 7 GiB de RAM, comece com uma ou duas threads.

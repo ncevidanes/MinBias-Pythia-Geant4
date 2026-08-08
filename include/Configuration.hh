@@ -38,6 +38,7 @@ struct Configuration {
 
   void Validate() const;
   void Print(std::ostream& output) const;
+  std::string NormalizedText() const;
   void WriteManifest() const;
 };
 

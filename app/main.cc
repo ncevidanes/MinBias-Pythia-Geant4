@@ -7,6 +7,7 @@
 #include "G4RunManagerFactory.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4VModularPhysicsList.hh"
+#include "Randomize.hh"
 
 #ifdef G4MULTITHREADED
 #include "G4MTRunManager.hh"
@@ -112,6 +113,9 @@ int main(int argc, char** argv) {
     }
 
     configuration.WriteManifest();
+
+    G4Random::setTheSeed(
+        static_cast<long>(configuration.seedBase));
 
     std::unique_ptr<G4RunManager> runManager(
         G4RunManagerFactory::CreateRunManager(

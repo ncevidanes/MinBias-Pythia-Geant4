@@ -43,6 +43,7 @@ class RootOutput {
 
  private:
   static int CurrentRunId();
+  static void WriteMetadata(const Configuration& configuration);
 };
 
 }  // namespace pg

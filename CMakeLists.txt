@@ -34,6 +34,63 @@ execute_process(
   COMMAND_ERROR_IS_FATAL ANY
 )
 
+execute_process(
+  COMMAND "${PYTHIA8_CONFIG_EXECUTABLE}" --version
+  OUTPUT_VARIABLE PG_PYTHIA_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  COMMAND_ERROR_IS_FATAL ANY
+)
+
+set(PG_ROOT_VERSION "unavailable")
+find_program(ROOT_CONFIG_EXECUTABLE NAMES root-config)
+if(ROOT_CONFIG_EXECUTABLE)
+  execute_process(
+    COMMAND "${ROOT_CONFIG_EXECUTABLE}" --version
+    OUTPUT_VARIABLE PG_ROOT_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+  )
+endif()
+
+set(PG_GIT_COMMIT "unknown")
+set(PG_GIT_DESCRIBE "unknown")
+find_package(Git QUIET)
+
+if(Git_FOUND)
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    OUTPUT_VARIABLE PG_GIT_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+    RESULT_VARIABLE PG_GIT_COMMIT_RESULT
+  )
+
+  if(NOT PG_GIT_COMMIT_RESULT EQUAL 0)
+    set(PG_GIT_COMMIT "unknown")
+  endif()
+
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" describe --always --dirty --tags
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    OUTPUT_VARIABLE PG_GIT_DESCRIBE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+    RESULT_VARIABLE PG_GIT_DESCRIBE_RESULT
+  )
+
+  if(NOT PG_GIT_DESCRIBE_RESULT EQUAL 0)
+    set(PG_GIT_DESCRIBE "unknown")
+  endif()
+endif()
+
+file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/generated")
+configure_file(
+  cmake/BuildInfo.hh.in
+  "${PROJECT_BINARY_DIR}/generated/BuildInfo.hh"
+  @ONLY
+)
+
 separate_arguments(PYTHIA8_CXXFLAGS NATIVE_COMMAND "${PYTHIA8_CXXFLAGS_RAW}")
 separate_arguments(PYTHIA8_LIBS NATIVE_COMMAND "${PYTHIA8_LIBS_RAW}")
 
@@ -59,7 +116,12 @@ add_executable(
   src/TrackingAction.cc
 )
 
-target_include_directories(pythia_geant PRIVATE "${PROJECT_SOURCE_DIR}/include")
+target_include_directories(
+  pythia_geant
+  PRIVATE
+    "${PROJECT_SOURCE_DIR}/include"
+    "${PROJECT_BINARY_DIR}/generated"
+)
 target_compile_options(
   pythia_geant
   PRIVATE
@@ -114,6 +176,24 @@ if(BUILD_TESTING)
       -Wpedantic
   )
   add_test(NAME cell_segmentation COMMAND cell_segmentation_test)
+
+  add_executable(
+    seed_policy_test
+    tests/SeedPolicyTest.cc
+  )
+  target_include_directories(
+    seed_policy_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    seed_policy_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  add_test(NAME seed_policy COMMAND seed_policy_test)
 endif()
 
 install(TARGETS pythia_geant RUNTIME DESTINATION bin)

@@ -198,6 +198,12 @@ void Configuration::Print(std::ostream& output) const {
          << "output = " << outputFile << '\n';
 }
 
+std::string Configuration::NormalizedText() const {
+  std::ostringstream output;
+  Print(output);
+  return output.str();
+}
+
 void Configuration::WriteManifest() const {
   const auto parent = outputFile.parent_path();
   if (!parent.empty()) {
@@ -210,7 +216,7 @@ void Configuration::WriteManifest() const {
     throw std::runtime_error("Não foi possível gravar o manifesto: " +
                              manifest.string());
   }
-  Print(output);
+  output << NormalizedText();
 }
 
 }  // namespace pg
