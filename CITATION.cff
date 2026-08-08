@@ -1,0 +1,74 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite the software itself using these
+  metadata. When discussing the derived calorimeter geometry parameters,
+  also cite the Lorenzetti Showers article listed under references.
+title: "MinBias-Pythia-Geant4"
+type: software
+version: "0.1.0"
+authors:
+  - family-names: "Assis"
+    given-names: "Nelson Cevidanes Nascimento"
+    name-particle: "de"
+contact:
+  - family-names: "Assis"
+    given-names: "Nelson Cevidanes Nascimento"
+    name-particle: "de"
+    email: "ncevidanes@gmail.com"
+abstract: >-
+  A CPU-based C++17 simulator for inelastic minimum-bias proton-proton
+  collisions at 14 TeV. It generates events with PYTHIA 8, transports
+  particles through a simplified ATLAS/Lorenzetti-like sampling calorimeter
+  in Geant4, and writes auditable ROOT output. The software supports fixed and
+  Poisson-distributed interactions, deterministic seed provenance,
+  multithreaded execution, particle lineage, and detector-cell segmentation.
+keywords:
+  - "high-energy physics"
+  - "minimum bias"
+  - "Monte Carlo simulation"
+  - "calorimetry"
+  - "pile-up"
+  - "PYTHIA 8"
+  - "Geant4"
+  - "ROOT"
+license: GPL-3.0-only
+repository-code: "https://github.com/ncevidanes/MinBias-Pythia-Geant4"
+references:
+  - type: article
+    title: >-
+      Lorenzetti Showers - A general-purpose framework for supporting signal
+      reconstruction and triggering with calorimeters
+    authors:
+      - family-names: "Araújo"
+        given-names: "M. V."
+      - family-names: "Begalli"
+        given-names: "M."
+      - family-names: "Freund"
+        given-names: "W. S."
+      - family-names: "Gonçalves"
+        given-names: "G. I."
+      - family-names: "Khandoga"
+        given-names: "M."
+      - family-names: "Laforge"
+        given-names: "B."
+      - family-names: "Leopold"
+        given-names: "A."
+      - family-names: "Marin"
+        given-names: "J. L."
+      - family-names: "Peralva"
+        given-names: "B. S.-M."
+      - family-names: "Pinto"
+        given-names: "J. V. F."
+      - family-names: "Santos"
+        given-names: "M. S."
+      - family-names: "Seixas"
+        given-names: "J. M."
+      - family-names: "Simas Filho"
+        given-names: "E. F."
+      - family-names: "Souza"
+        given-names: "E. E. P."
+    doi: "10.1016/j.cpc.2023.108671"
+    journal: "Computer Physics Communications"
+    volume: 286
+    year: 2023
+    url: "https://doi.org/10.1016/j.cpc.2023.108671"

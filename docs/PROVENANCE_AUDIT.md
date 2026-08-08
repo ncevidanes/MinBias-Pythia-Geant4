@@ -135,7 +135,10 @@ O seguinte aviso pode ser usado em `src/Sampling.cc` e desenvolvido em `THIRD_PA
 
 Referência científica obrigatória nas próximas etapas:
 
-> J. H. B. de Carvalho et al., “Lorenzetti Showers”, *Computer Physics Communications*, DOI: <https://doi.org/10.1016/j.cpc.2023.108671>.
+> M. V. Araújo et al., “Lorenzetti Showers - A general-purpose framework for
+> supporting signal reconstruction and triggering with calorimeters,”
+> *Computer Physics Communications* 286 (2023), 108671,
+> DOI: <https://doi.org/10.1016/j.cpc.2023.108671>.
 
 ## 9. Decisão do Ciclo A1
 

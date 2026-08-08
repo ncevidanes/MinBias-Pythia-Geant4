@@ -167,7 +167,11 @@ root -l -q 'scripts/inspect_root.C("outputs/minbias_smoke.root")'
 Leia também:
 
 - `docs/ARCHITECTURE.md`;
-- `docs/VALIDATION.md`.
+- `docs/VALIDATION.md`;
+- `docs/PROVENANCE_AUDIT.md`;
+- `docs/LICENSE_AUDIT.md`;
+- `docs/CITATION_AUDIT.md`;
+- `THIRD_PARTY_NOTICES.md`.
 
 ## Referências técnicas
 
@@ -179,7 +183,27 @@ Leia também:
 - [guia oficial da lista FTFP_BERT](https://geant4.web.cern.ch/documentation/dev/plg_html/PhysicsListGuide/reference_PL/FTFP_BERT.html);
 - [Lorenzetti](https://github.com/lorenzetti-ufrj-br/lorenzetti), usado
   como referência para a estrutura modular e os parâmetros da geometria
-  simplificada.
+  simplificada, e M. V. Araújo et al., *Lorenzetti Showers - A
+  general-purpose framework for supporting signal reconstruction and
+  triggering with calorimeters*, Computer Physics Communications 286 (2023),
+  108671, [doi:10.1016/j.cpc.2023.108671](https://doi.org/10.1016/j.cpc.2023.108671).
+
+## Como citar
+
+O arquivo `CITATION.cff` contém os metadados canônicos. Enquanto o DOI desta
+versão ainda não tiver sido emitido, use a referência provisória:
+
+> de Assis, N. C. N. (2026). *MinBias-Pythia-Geant4* (Version 0.1.0)
+> [Computer software]. GitHub.
+> <https://github.com/ncevidanes/MinBias-Pythia-Geant4>
+
+Depois do arquivamento no Zenodo, a referência deverá usar o DOI específico da
+versão `0.1.0`. O DOI conceitual será mantido para direcionar leitores à versão
+mais recente do projeto.
+
+A citação deste software não substitui a citação do artigo do Lorenzetti quando
+os parâmetros da geometria derivada forem relevantes para o trabalho. Consulte
+`THIRD_PARTY_NOTICES.md` para a atribuição completa.
 
 ## Licença e atribuição
 
