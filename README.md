@@ -180,3 +180,21 @@ Leia também:
 - [Lorenzetti](https://github.com/lorenzetti-ufrj-br/lorenzetti), usado
   como referência para a estrutura modular e os parâmetros da geometria
   simplificada.
+
+## Licença e atribuição
+
+Copyright (C) 2026 Nelson Cevidanes Nascimento de Assis.
+
+O código deste repositório é distribuído sob a **GNU General Public License
+v3.0 only**, identificada por `GPL-3.0-only`. Consulte o arquivo `LICENSE`.
+
+Os parâmetros de amostragem em `src/Sampling.cc` foram derivados do exemplo de
+geometria ATLAS do Lorenzetti, especificamente de
+`geometry/ATLAS/python/ECAL.py` e `TILE.py` no commit
+`5929bb15ff193bc63305f8201be7b2eb207d1557`. Eles foram convertidos para
+milímetros, simplificados para construção direta no Geant4 e modificados onde
+documentado. Nenhum arquivo-fonte do Lorenzetti é incluído literalmente.
+
+PYTHIA, Geant4, ROOT e CMake são projetos independentes, não são incorporados
+a este repositório e permanecem sujeitos às respectivas licenças. A análise
+detalhada está em `docs/LICENSE_AUDIT.md`.

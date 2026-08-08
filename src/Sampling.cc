@@ -1,3 +1,16 @@
+/*
+ * MinBias-Pythia-Geant4: minimum-bias simulation from PYTHIA 8 to Geant4.
+ * Copyright (C) 2026 Nelson Cevidanes Nascimento de Assis
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * The detector sampling parameters in this file were derived from the
+ * Lorenzetti ATLAS geometry example, specifically
+ * geometry/ATLAS/python/ECAL.py and TILE.py at commit
+ * 5929bb15ff193bc63305f8201be7b2eb207d1557. The parameters were converted
+ * to millimetres, simplified for direct Geant4 construction, and modified
+ * where documented. No Lorenzetti source file is included verbatim.
+ */
+
 #include "Sampling.hh"
 
 #include <cmath>
