@@ -1,6 +1,7 @@
 #include <TBranch.h>
 #include <TFile.h>
 #include <TLeaf.h>
+#include <TLeafC.h>
 #include <TObjArray.h>
 #include <TTree.h>
 
@@ -8,7 +9,6 @@
 #include <cstring>
 #include <iostream>
 #include <string>
-#include <vector>
 
 namespace {
 
@@ -16,9 +16,15 @@ bool SameDoubleBits(const double left, const double right) {
   return std::memcmp(&left, &right, sizeof(double)) == 0;
 }
 
-bool IsStringBranch(const TBranch& branch) {
-  const std::string className = branch.GetClassName();
-  return className == "string" || className == "std::string";
+TLeaf* FindOnlyLeaf(TBranch& branch) {
+  if (auto* leaf = branch.GetLeaf(branch.GetName())) {
+    return leaf;
+  }
+  TObjArray* leaves = branch.GetListOfLeaves();
+  if (leaves && leaves->GetEntries() == 1) {
+    return static_cast<TLeaf*>(leaves->At(0));
+  }
+  return nullptr;
 }
 
 bool CompareTree(TTree& left, TTree& right, int& differences) {
@@ -37,13 +43,6 @@ bool CompareTree(TTree& left, TTree& right, int& differences) {
     return false;
   }
 
-  struct StringBranch {
-    std::string name;
-    std::string* leftValue = nullptr;
-    std::string* rightValue = nullptr;
-  };
-  std::vector<StringBranch> strings;
-
   for (int index = 0; index < leftBranches->GetEntries(); ++index) {
     auto* leftBranch = static_cast<TBranch*>(leftBranches->At(index));
     auto* rightBranch = right.GetBranch(leftBranch->GetName());
@@ -53,14 +52,6 @@ bool CompareTree(TTree& left, TTree& right, int& differences) {
       ++differences;
       return false;
     }
-    if (IsStringBranch(*leftBranch)) {
-      strings.push_back({leftBranch->GetName(), nullptr, nullptr});
-    }
-  }
-
-  for (auto& branch : strings) {
-    left.SetBranchAddress(branch.name.c_str(), &branch.leftValue);
-    right.SetBranchAddress(branch.name.c_str(), &branch.rightValue);
   }
 
   for (Long64_t entry = 0; entry < left.GetEntries(); ++entry) {
@@ -70,12 +61,8 @@ bool CompareTree(TTree& left, TTree& right, int& differences) {
     for (int index = 0; index < leftBranches->GetEntries(); ++index) {
       auto* leftBranch = static_cast<TBranch*>(leftBranches->At(index));
       auto* rightBranch = right.GetBranch(leftBranch->GetName());
-      if (IsStringBranch(*leftBranch)) {
-        continue;
-      }
-
-      TLeaf* leftLeaf = leftBranch->GetLeaf(leftBranch->GetName());
-      TLeaf* rightLeaf = rightBranch->GetLeaf(rightBranch->GetName());
+      TLeaf* leftLeaf = FindOnlyLeaf(*leftBranch);
+      TLeaf* rightLeaf = FindOnlyLeaf(*rightBranch);
       if (!leftLeaf || !rightLeaf ||
           std::string(leftLeaf->GetTypeName()) != rightLeaf->GetTypeName() ||
           leftLeaf->GetLen() != rightLeaf->GetLen()) {
@@ -84,6 +71,31 @@ bool CompareTree(TTree& left, TTree& right, int& differences) {
         ++differences;
         return false;
       }
+
+      auto* leftText = dynamic_cast<TLeafC*>(leftLeaf);
+      auto* rightText = dynamic_cast<TLeafC*>(rightLeaf);
+      if ((leftText == nullptr) != (rightText == nullptr)) {
+        std::cerr << "[DIFF] " << treeName << '.' << leftBranch->GetName()
+                  << ": representação textual\n";
+        ++differences;
+        return false;
+      }
+      if (leftText) {
+        const auto* leftValue =
+            static_cast<const char*>(leftText->GetValuePointer());
+        const auto* rightValue =
+            static_cast<const char*>(rightText->GetValuePointer());
+        if (!leftValue || !rightValue ||
+            std::strcmp(leftValue, rightValue) != 0) {
+          std::cerr << "[DIFF] " << treeName << '.'
+                    << leftBranch->GetName() << " na entrada " << entry
+                    << '\n';
+          ++differences;
+          return false;
+        }
+        continue;
+      }
+
       for (int element = 0; element < leftLeaf->GetLen(); ++element) {
         if (!SameDoubleBits(leftLeaf->GetValue(element),
                             rightLeaf->GetValue(element))) {
@@ -92,16 +104,6 @@ bool CompareTree(TTree& left, TTree& right, int& differences) {
           ++differences;
           return false;
         }
-      }
-    }
-
-    for (const auto& branch : strings) {
-      if (!branch.leftValue || !branch.rightValue ||
-          *branch.leftValue != *branch.rightValue) {
-        std::cerr << "[DIFF] " << treeName << '.' << branch.name
-                  << " na entrada " << entry << '\n';
-        ++differences;
-        return false;
       }
     }
   }

@@ -1,4 +1,8 @@
+#include <TBranch.h>
 #include <TFile.h>
+#include <TLeaf.h>
+#include <TLeafC.h>
+#include <TObjArray.h>
 #include <TTree.h>
 
 #include <algorithm>
@@ -47,6 +51,44 @@ void CheckBranches(TTree& tree, const std::vector<std::string>& expected,
 bool NearlyEqual(const double left, const double right) {
   const double scale = std::max({1.0, std::abs(left), std::abs(right)});
   return std::abs(left - right) <= 1.0e-10 * scale;
+}
+
+TLeaf* FindOnlyLeaf(TBranch& branch) {
+  if (auto* leaf = branch.GetLeaf(branch.GetName())) {
+    return leaf;
+  }
+  TObjArray* leaves = branch.GetListOfLeaves();
+  if (leaves && leaves->GetEntries() == 1) {
+    return static_cast<TLeaf*>(leaves->At(0));
+  }
+  return nullptr;
+}
+
+std::string ReadTextBranch(TTree& tree, const char* name,
+                           AuditResult& audit) {
+  TBranch* branch = tree.GetBranch(name);
+  audit.Check(branch != nullptr,
+              std::string(tree.GetName()) + ": branch textual ausente: " +
+                  name);
+  if (!branch) {
+    return {};
+  }
+
+  TLeaf* leaf = FindOnlyLeaf(*branch);
+  auto* textLeaf = dynamic_cast<TLeafC*>(leaf);
+  audit.Check(textLeaf != nullptr,
+              std::string(tree.GetName()) + '.' + name +
+                  " não está armazenada como TLeafC");
+  if (!textLeaf) {
+    return {};
+  }
+
+  const auto* value =
+      static_cast<const char*>(textLeaf->GetValuePointer());
+  audit.Check(value != nullptr,
+              std::string(tree.GetName()) + '.' + name +
+                  " não possui valor textual legível");
+  return value ? std::string(value) : std::string();
 }
 
 }  // namespace
@@ -118,46 +160,45 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
   int configuredEvents = -1;
   int firstBcid = -1;
   int generatorAudit = -1;
-  std::string* projectVersion = nullptr;
-  std::string* gitCommit = nullptr;
-  std::string* gitDescribe = nullptr;
-  std::string* rootVersion = nullptr;
-  std::string* geant4Version = nullptr;
-  std::string* pythiaVersion = nullptr;
   if (metadata->GetEntries() == 1) {
     metadata->SetBranchAddress("schema_version", &schemaVersion);
     metadata->SetBranchAddress("events", &configuredEvents);
     metadata->SetBranchAddress("first_bcid", &firstBcid);
     metadata->SetBranchAddress("generator_audit", &generatorAudit);
-    metadata->SetBranchAddress("project_version", &projectVersion);
-    metadata->SetBranchAddress("git_commit", &gitCommit);
-    metadata->SetBranchAddress("git_describe", &gitDescribe);
-    metadata->SetBranchAddress("root_version", &rootVersion);
-    metadata->SetBranchAddress("geant4_version", &geant4Version);
-    metadata->SetBranchAddress("pythia_version", &pythiaVersion);
     metadata->GetEntry(0);
+    const std::string projectVersion =
+        ReadTextBranch(*metadata, "project_version", audit);
+    const std::string gitCommit =
+        ReadTextBranch(*metadata, "git_commit", audit);
+    const std::string gitDescribe =
+        ReadTextBranch(*metadata, "git_describe", audit);
+    const std::string rootVersion =
+        ReadTextBranch(*metadata, "root_version", audit);
+    const std::string geant4Version =
+        ReadTextBranch(*metadata, "geant4_version", audit);
+    const std::string pythiaVersion =
+        ReadTextBranch(*metadata, "pythia_version", audit);
     audit.Check(schemaVersion == 1, "schema_version deve ser 1");
     audit.Check(configuredEvents > 0, "metadata.events deve ser positivo");
     audit.Check(firstBcid >= 0, "metadata.first_bcid não pode ser negativo");
     audit.Check(generatorAudit == 0 || generatorAudit == 1,
                 "metadata.generator_audit deve ser booleano");
-    audit.Check(projectVersion && *projectVersion == "0.1.0",
+    audit.Check(projectVersion == "0.1.0",
                 "metadata.project_version deve ser 0.1.0");
-    audit.Check(gitCommit && gitCommit->size() == 40 && *gitCommit != "unknown",
+    audit.Check(gitCommit.size() == 40 && gitCommit != "unknown",
                 "metadata.git_commit não contém um SHA completo");
     if (expectedCommit[0] != '\0') {
-      audit.Check(gitCommit && *gitCommit == expectedCommit,
+      audit.Check(gitCommit == expectedCommit,
                   "metadata.git_commit diverge do commit auditado");
     }
-    audit.Check(gitDescribe && gitDescribe->find("dirty") == std::string::npos &&
-                    *gitDescribe != "unknown",
+    audit.Check(gitDescribe.find("dirty") == std::string::npos &&
+                    gitDescribe != "unknown" && !gitDescribe.empty(),
                 "metadata.git_describe é desconhecido ou indica árvore suja");
-    audit.Check(rootVersion && *rootVersion != "unavailable" &&
-                    !rootVersion->empty(),
+    audit.Check(rootVersion != "unavailable" && !rootVersion.empty(),
                 "metadata.root_version não foi resolvida");
-    audit.Check(geant4Version && !geant4Version->empty(),
+    audit.Check(!geant4Version.empty(),
                 "metadata.geant4_version está vazia");
-    audit.Check(pythiaVersion && !pythiaVersion->empty(),
+    audit.Check(!pythiaVersion.empty(),
                 "metadata.pythia_version está vazia");
     metadata->ResetBranchAddresses();
   }
