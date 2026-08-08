@@ -194,6 +194,25 @@ if(BUILD_TESTING)
       -Wpedantic
   )
   add_test(NAME seed_policy COMMAND seed_policy_test)
+
+  add_executable(
+    configuration_test
+    tests/ConfigurationTest.cc
+    src/Configuration.cc
+  )
+  target_include_directories(
+    configuration_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    configuration_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  add_test(NAME configuration COMMAND configuration_test)
 endif()
 
 install(TARGETS pythia_geant RUNTIME DESTINATION bin)

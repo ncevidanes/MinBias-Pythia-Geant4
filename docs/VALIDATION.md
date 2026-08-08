@@ -31,10 +31,13 @@ Devem estar registrados e aprovados:
 
 - `particle_decision`;
 - `cell_segmentation`;
-- `seed_policy`.
+- `seed_policy`;
+- `configuration`.
 
 O teste `seed_policy` cobre normalização, limites, sementes por trabalhador,
 wrap-around e ausência de colisões no intervalo exercitado pelo teste.
+O teste `configuration` cobre resolução de caminhos, chaves desconhecidas,
+números malformados ou não finitos, sigmas negativos e overflow de BCID.
 
 ## 3. Geração
 
@@ -89,6 +92,12 @@ números diferentes de threads validam integridade e proveniência, mas não
 identidade evento a evento, pois muda a distribuição entre os geradores
 PYTHIA dos trabalhadores.
 
+Para a candidata de release, `scripts/audit_release.sh` automatiza duas
+execuções com `threads = 1`, a mesma configuração, a mesma semente e o mesmo
+caminho lógico de saída. O script exige manifestos idênticos e compara, branch
+a branch e entrada a entrada, as TTrees `events`, `hits`, `generator` e
+`metadata` por meio de `scripts/compare_root.C`.
+
 ## 7. Produção
 
 Executar primeiro:
@@ -107,3 +116,26 @@ Somente depois:
 Registrar tempo, memória máxima e tamanho do ROOT. Antes de arquivar a campanha,
 confirmar que as versões e a configuração normalizada estão presentes em
 `metadata` e que o manifesto correspondente foi preservado.
+
+## 8. Fechamento técnico de release
+
+O Ciclo A4 deve ser executado sobre um commit já criado e com a árvore
+rastreada limpa:
+
+```bash
+./scripts/audit_release.sh
+```
+
+A auditoria somente é aprovada quando o log termina com:
+
+```text
+AUDIT_RESULT=PASS
+COMPARE_RESULT=PASS
+A4_RESULT=PASS commit=<SHA de 40 caracteres>
+```
+
+O SHA impresso deve ser o mesmo gravado em `metadata.git_commit` e o mesmo que
+receberá a tag da release. A auditoria técnica não substitui a campanha de
+partículas únicas da Seção 4: sem essa campanha, a versão pode ser publicada
+como simulador técnico de geometria simplificada, mas não como resposta
+calorimétrica fisicamente validada ou representação oficial do ATLAS.

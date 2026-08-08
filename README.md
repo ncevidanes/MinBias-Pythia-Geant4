@@ -41,6 +41,7 @@ limita a geração transportada a `|eta| <= 1.8`.
 
 - compilador C++17;
 - CMake 3.20 ou superior;
+- Python 3 para validar os arquivos de configuração;
 - PYTHIA 8 com `pythia8-config` no `PATH`;
 - Geant4 11.2 ou superior, compilado com suporte a ROOT para a saída `.root`.
 
@@ -161,8 +162,26 @@ terminal e `metadata` mantém a proveniência junto aos dados.
 ## Inspeção rápida
 
 ```bash
-root -l -q 'scripts/inspect_root.C("outputs/minbias_smoke.root")'
+root -l -b -q 'scripts/inspect_root.C("outputs/minbias_smoke.root")'
 ```
+
+Para verificar automaticamente o esquema e as invariantes contábeis:
+
+```bash
+root -l -b -q 'scripts/audit_root.C("outputs/minbias_smoke.root")'
+```
+
+Antes de criar uma tag de release, faça o commit da candidata, mantenha a
+árvore rastreada limpa e execute a auditoria integrada:
+
+```bash
+./scripts/audit_release.sh
+```
+
+Ela realiza build limpo, quatro testes de regressão, dry runs, duas execuções
+smoke com a mesma semente, auditoria das quatro TTrees, comparação exata do
+conteúdo ROOT e inspeção do arquivo-fonte produzido por `git archive`. As
+evidências são gravadas sob `outputs/`, que não é versionado.
 
 Leia também:
 
@@ -171,6 +190,7 @@ Leia também:
 - `docs/PROVENANCE_AUDIT.md`;
 - `docs/LICENSE_AUDIT.md`;
 - `docs/CITATION_AUDIT.md`;
+- `docs/TECHNICAL_AUDIT.md`;
 - `THIRD_PARTY_NOTICES.md`.
 
 ## Referências técnicas

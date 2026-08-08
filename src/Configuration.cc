@@ -2,11 +2,14 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace pg {
 namespace {
@@ -38,6 +41,34 @@ bool ParseBool(const std::string& value, const std::string& key) {
   }
   throw std::runtime_error("Valor booleano inválido para " + key + ": " +
                            value);
+}
+
+int ParseInt(const std::string& value, const std::string& key) {
+  try {
+    std::size_t parsed = 0;
+    const int result = std::stoi(value, &parsed);
+    if (parsed != value.size()) {
+      throw std::runtime_error("caracteres adicionais");
+    }
+    return result;
+  } catch (const std::exception&) {
+    throw std::runtime_error("Valor inteiro inválido para " + key + ": " +
+                             value);
+  }
+}
+
+double ParseDouble(const std::string& value, const std::string& key) {
+  try {
+    std::size_t parsed = 0;
+    const double result = std::stod(value, &parsed);
+    if (parsed != value.size() || !std::isfinite(result)) {
+      throw std::runtime_error("valor não finito ou caracteres adicionais");
+    }
+    return result;
+  } catch (const std::exception&) {
+    throw std::runtime_error("Valor numérico inválido para " + key + ": " +
+                             value);
+  }
 }
 
 std::filesystem::path Resolve(const std::filesystem::path& base,
@@ -91,6 +122,25 @@ Configuration Configuration::Load(const std::filesystem::path& filename) {
     }
   }
 
+  static const std::unordered_set<std::string> allowedKeys{
+      "events",              "first_bcid",
+      "threads",             "seed_base",
+      "interaction_mode",    "mean_interactions",
+      "fixed_interactions",  "pythia_config",
+      "physics_list",        "production_cut_mm",
+      "beam_sigma_x_mm",     "beam_sigma_y_mm",
+      "beam_sigma_z_mm",     "beam_sigma_t_ns",
+      "max_abs_eta",          "transport_neutrinos",
+      "generator_audit",      "check_overlaps",
+      "print_every",          "output",
+  };
+  for (const auto& [key, value] : values) {
+    (void)value;
+    if (allowedKeys.count(key) == 0) {
+      throw std::runtime_error("Chave desconhecida: " + key);
+    }
+  }
+
   const auto get = [&values](const std::string& key) -> const std::string& {
     const auto iterator = values.find(key);
     if (iterator == values.end()) {
@@ -104,22 +154,29 @@ Configuration Configuration::Load(const std::filesystem::path& filename) {
     return iterator == values.end() ? fallback : iterator->second;
   };
 
-  result.events = std::stoi(get("events"));
-  result.firstBcid = std::stoi(optional("first_bcid", "0"));
-  result.threads = std::stoi(get("threads"));
-  result.seedBase = std::stoi(get("seed_base"));
+  result.events = ParseInt(get("events"), "events");
+  result.firstBcid = ParseInt(optional("first_bcid", "0"), "first_bcid");
+  result.threads = ParseInt(get("threads"), "threads");
+  result.seedBase = ParseInt(get("seed_base"), "seed_base");
   result.interactionMode = get("interaction_mode");
-  result.meanInteractions = std::stod(get("mean_interactions"));
+  result.meanInteractions =
+      ParseDouble(get("mean_interactions"), "mean_interactions");
   result.fixedInteractions =
-      std::stoi(optional("fixed_interactions", "1"));
+      ParseInt(optional("fixed_interactions", "1"), "fixed_interactions");
   result.physicsList = get("physics_list");
   result.productionCutMm =
-      std::stod(optional("production_cut_mm", "1.0"));
-  result.beamSigmaXmm = std::stod(optional("beam_sigma_x_mm", "0.0"));
-  result.beamSigmaYmm = std::stod(optional("beam_sigma_y_mm", "0.0"));
-  result.beamSigmaZmm = std::stod(optional("beam_sigma_z_mm", "0.0"));
-  result.beamSigmaTns = std::stod(optional("beam_sigma_t_ns", "0.0"));
-  result.maxAbsEta = std::stod(optional("max_abs_eta", "1.8"));
+      ParseDouble(optional("production_cut_mm", "1.0"),
+                  "production_cut_mm");
+  result.beamSigmaXmm =
+      ParseDouble(optional("beam_sigma_x_mm", "0.0"), "beam_sigma_x_mm");
+  result.beamSigmaYmm =
+      ParseDouble(optional("beam_sigma_y_mm", "0.0"), "beam_sigma_y_mm");
+  result.beamSigmaZmm =
+      ParseDouble(optional("beam_sigma_z_mm", "0.0"), "beam_sigma_z_mm");
+  result.beamSigmaTns =
+      ParseDouble(optional("beam_sigma_t_ns", "0.0"), "beam_sigma_t_ns");
+  result.maxAbsEta =
+      ParseDouble(optional("max_abs_eta", "1.8"), "max_abs_eta");
   result.transportNeutrinos =
       ParseBool(optional("transport_neutrinos", "false"),
                 "transport_neutrinos");
@@ -127,7 +184,8 @@ Configuration Configuration::Load(const std::filesystem::path& filename) {
       ParseBool(optional("generator_audit", "false"), "generator_audit");
   result.checkOverlaps =
       ParseBool(optional("check_overlaps", "false"), "check_overlaps");
-  result.printEvery = std::stoi(optional("print_every", "10"));
+  result.printEvery =
+      ParseInt(optional("print_every", "10"), "print_every");
 
   const auto base = result.sourceFile.parent_path();
   result.pythiaConfig = Resolve(base, get("pythia_config"));
@@ -144,6 +202,11 @@ void Configuration::Validate() const {
   if (threads <= 0) {
     throw std::runtime_error("threads deve ser positivo");
   }
+  if (firstBcid < 0 ||
+      events - 1 > std::numeric_limits<int>::max() - firstBcid) {
+    throw std::runtime_error(
+        "o intervalo de BCIDs deve caber em um inteiro não negativo");
+  }
   if (seedBase <= 0) {
     throw std::runtime_error("seed_base deve ser positivo");
   }
@@ -151,16 +214,25 @@ void Configuration::Validate() const {
     throw std::runtime_error(
         "interaction_mode deve ser 'poisson' ou 'fixed'");
   }
-  if (meanInteractions < 0.0) {
-    throw std::runtime_error("mean_interactions não pode ser negativo");
+  if (!std::isfinite(meanInteractions) || meanInteractions < 0.0) {
+    throw std::runtime_error(
+        "mean_interactions deve ser finito e não negativo");
   }
   if (fixedInteractions < 0) {
     throw std::runtime_error("fixed_interactions não pode ser negativo");
   }
-  if (productionCutMm <= 0.0) {
-    throw std::runtime_error("production_cut_mm deve ser positivo");
+  if (!std::isfinite(productionCutMm) || productionCutMm <= 0.0) {
+    throw std::runtime_error(
+        "production_cut_mm deve ser finito e positivo");
   }
-  if (maxAbsEta <= 0.0 || maxAbsEta > 1.8) {
+  if (!std::isfinite(beamSigmaXmm) || beamSigmaXmm < 0.0 ||
+      !std::isfinite(beamSigmaYmm) || beamSigmaYmm < 0.0 ||
+      !std::isfinite(beamSigmaZmm) || beamSigmaZmm < 0.0 ||
+      !std::isfinite(beamSigmaTns) || beamSigmaTns < 0.0) {
+    throw std::runtime_error(
+        "os sigmas do feixe devem ser finitos e não negativos");
+  }
+  if (!std::isfinite(maxAbsEta) || maxAbsEta <= 0.0 || maxAbsEta > 1.8) {
     throw std::runtime_error(
         "max_abs_eta deve estar em (0, 1.8] para esta geometria");
   }
@@ -220,4 +292,3 @@ void Configuration::WriteManifest() const {
 }
 
 }  // namespace pg
-

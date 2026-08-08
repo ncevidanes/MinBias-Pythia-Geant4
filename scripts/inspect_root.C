@@ -10,14 +10,15 @@ void inspect_root(const char* filename = "outputs/minbias_smoke.root") {
     return;
   }
 
-  for (const char* name : {"events", "hits", "generator"}) {
+  for (const char* name : {"events", "hits", "generator", "metadata"}) {
     auto* tree = file.Get<TTree>(name);
     if (!tree) {
       std::cout << name << ": ausente\n";
       continue;
     }
-    std::cout << name << ": " << tree->GetEntries() << " entradas\n";
+    std::cout << name << ": " << tree->GetEntries() << " entradas, "
+              << tree->GetListOfBranches()->GetEntries()
+              << " branches\n";
     tree->Print();
   }
 }
-

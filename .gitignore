@@ -1,4 +1,10 @@
-/build/
+/build*/
 /outputs/
 *.root
 *.manifest.txt
+*.log
+*.patch
+*.py[cod]
+__pycache__/
+/cycle*.txt
+/*.zip
