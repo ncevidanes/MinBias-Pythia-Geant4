@@ -4,6 +4,7 @@
 #include "LineageInfo.hh"
 #include "RootOutput.hh"
 #include "SeedPolicy.hh"
+#include "SingleParticleKinematics.hh"
 
 #include "G4Event.hh"
 #include "G4Exception.hh"
@@ -17,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -30,17 +32,22 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(Configuration configuration)
       G4Threading::G4GetThreadId());
   random_.seed(static_cast<std::mt19937_64::result_type>(seed));
 
-  if (!pythia_.readFile(configuration_.pythiaConfig.string())) {
+  if (configuration_.generatorMode != "pythia") {
+    return;
+  }
+
+  pythia_ = std::make_unique<Pythia8::Pythia>();
+  if (!pythia_->readFile(configuration_.pythiaConfig.string())) {
     G4ExceptionDescription message;
     message << "Falha ao ler " << configuration_.pythiaConfig;
     G4Exception("PrimaryGeneratorAction", "PythiaConfig", FatalException,
                 message);
   }
 
-  pythia_.readString("Random:setSeed = on");
-  pythia_.readString("Random:seed = " + std::to_string(seed));
+  pythia_->readString("Random:setSeed = on");
+  pythia_->readString("Random:seed = " + std::to_string(seed));
 
-  if (!pythia_.init()) {
+  if (!pythia_->init()) {
     G4Exception("PrimaryGeneratorAction", "PythiaInit", FatalException,
                 "O PYTHIA não pôde ser inicializado.");
   }
@@ -70,7 +77,7 @@ void PrimaryGeneratorAction::AuditPythiaParticle(
     return;
   }
 
-  const auto& particle = pythia_.event[index];
+  const auto& particle = pythia_->event[index];
   RootOutput::WriteGeneratorParticle(GeneratorParticleRecord{
       eventId,
       bcid,
@@ -105,18 +112,28 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
   const int eventId = event->GetEventID();
   const int bcid = configuration_.firstBcid + eventId;
   state.Reset(eventId, bcid);
+
+  if (configuration_.generatorMode == "single_particle") {
+    GenerateSingleParticle(event);
+    return;
+  }
+  GeneratePythiaPrimaries(event);
+}
+
+void PrimaryGeneratorAction::GeneratePythiaPrimaries(G4Event* event) {
+  EventState& state = EventState::Instance();
   state.requestedInteractions = DrawInteractionCount();
 
   auto* particleTable = G4ParticleTable::GetParticleTable();
 
   for (int subevent = 0; subevent < state.requestedInteractions;
        ++subevent) {
-    if (!pythia_.next()) {
+    if (!pythia_->next()) {
       ++state.generationFailures;
       continue;
     }
     ++state.generatedInteractions;
-    state.generatorParticles += pythia_.event.size();
+    state.generatorParticles += pythia_->event.size();
 
     const double collisionXmm =
         DrawGaussian(configuration_.beamSigmaXmm);
@@ -127,8 +144,8 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
     const double collisionTns =
         DrawGaussian(configuration_.beamSigmaTns);
 
-    for (int index = 0; index < pythia_.event.size(); ++index) {
-      const auto& particle = pythia_.event[index];
+    for (int index = 0; index < pythia_->event.size(); ++index) {
+      const auto& particle = pythia_->event[index];
       G4ParticleDefinition* definition =
           particleTable->FindParticle(particle.id());
 
@@ -144,7 +161,8 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
       const ParticleRejectionCode rejectionCode =
           ClassifyParticle(decisionInput);
       state.RecordGeneratorDecision(rejectionCode);
-      AuditPythiaParticle(eventId, bcid, subevent, index, rejectionCode);
+      AuditPythiaParticle(state.eventId, state.bcid, subevent, index,
+                          rejectionCode);
 
       if (rejectionCode != ParticleRejectionCode::kAccepted) {
         continue;
@@ -172,6 +190,88 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
       ++state.transportedParticles;
     }
   }
+}
+
+void PrimaryGeneratorAction::GenerateSingleParticle(G4Event* event) {
+  EventState& state = EventState::Instance();
+  state.requestedInteractions = 1;
+  state.generatedInteractions = 1;
+  state.generatorParticles = 1;
+
+  G4ParticleDefinition* definition =
+      G4ParticleTable::GetParticleTable()->FindParticle(
+          configuration_.singleParticlePdg);
+  const bool isNeutrino = IsNeutrinoPdg(configuration_.singleParticlePdg);
+
+  ParticleDecisionInput decisionInput;
+  decisionInput.isFinal = true;
+  decisionInput.isVisible = !isNeutrino;
+  decisionInput.transportNeutrinos = configuration_.transportNeutrinos;
+  decisionInput.hasGeantDefinition = definition != nullptr;
+  decisionInput.pdg = configuration_.singleParticlePdg;
+  decisionInput.eta = configuration_.singleParticleEta;
+  decisionInput.maxAbsEta = configuration_.maxAbsEta;
+
+  const ParticleRejectionCode rejectionCode =
+      ClassifyParticle(decisionInput);
+  state.RecordGeneratorDecision(rejectionCode);
+
+  const double massGeV =
+      definition == nullptr ? 0.0 : definition->GetPDGMass() / GeV;
+  const SingleParticleKinematics kinematics =
+      MakeSingleParticleKinematics(
+          configuration_.singleParticleKineticEnergyGeV, massGeV,
+          configuration_.singleParticleEta,
+          configuration_.singleParticlePhi);
+
+  if (configuration_.generatorAudit) {
+    RootOutput::WriteGeneratorParticle(GeneratorParticleRecord{
+        state.eventId,
+        state.bcid,
+        0,
+        0,
+        configuration_.singleParticlePdg,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        isNeutrino ? 0 : 1,
+        kinematics.pxGeV,
+        kinematics.pyGeV,
+        kinematics.pzGeV,
+        kinematics.totalEnergyGeV,
+        massGeV,
+        configuration_.singleParticleEta,
+        configuration_.singleParticlePhi,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        rejectionCode == ParticleRejectionCode::kAccepted ? 1 : 0,
+        static_cast<int>(rejectionCode),
+    });
+  }
+
+  if (rejectionCode != ParticleRejectionCode::kAccepted) {
+    return;
+  }
+
+  auto* primary = new G4PrimaryParticle(
+      definition, kinematics.pxGeV * GeV, kinematics.pyGeV * GeV,
+      kinematics.pzGeV * GeV, kinematics.totalEnergyGeV * GeV);
+  primary->SetUserInformation(
+      new PrimaryLineageInfo(0, configuration_.singleParticlePdg));
+
+  auto* vertex = new G4PrimaryVertex(
+      DrawGaussian(configuration_.beamSigmaXmm) * mm,
+      DrawGaussian(configuration_.beamSigmaYmm) * mm,
+      DrawGaussian(configuration_.beamSigmaZmm) * mm,
+      DrawGaussian(configuration_.beamSigmaTns) * ns);
+  vertex->SetPrimary(primary);
+  event->AddPrimaryVertex(vertex);
+  ++state.transportedParticles;
 }
 
 }  // namespace pg

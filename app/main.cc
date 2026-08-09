@@ -30,6 +30,11 @@ void PrintUsage(const char* executable) {
       << "  --seed N\n"
       << "  --output ARQUIVO.root\n"
       << "  --physics-list NOME\n"
+      << "  --generator-mode pythia|single_particle\n"
+      << "  --particle-pdg PDG\n"
+      << "  --particle-kinetic-energy-gev VALOR\n"
+      << "  --particle-eta VALOR\n"
+      << "  --particle-phi VALOR\n"
       << "  --dry-run\n";
 }
 
@@ -61,7 +66,12 @@ int main(int argc, char** argv) {
       } else if (argument == "--events" || argument == "--mu" ||
                  argument == "--threads" || argument == "--seed" ||
                  argument == "--output" ||
-                 argument == "--physics-list") {
+                 argument == "--physics-list" ||
+                 argument == "--generator-mode" ||
+                 argument == "--particle-pdg" ||
+                 argument == "--particle-kinetic-energy-gev" ||
+                 argument == "--particle-eta" ||
+                 argument == "--particle-phi") {
         ++index;
         if (index >= argc) {
           throw std::runtime_error("Valor ausente para " + argument);
@@ -102,6 +112,21 @@ int main(int argc, char** argv) {
       } else if (argument == "--physics-list") {
         configuration.physicsList =
             RequireValue(index, argc, argv, argument);
+      } else if (argument == "--generator-mode") {
+        configuration.generatorMode =
+            RequireValue(index, argc, argv, argument);
+      } else if (argument == "--particle-pdg") {
+        configuration.singleParticlePdg =
+            std::stoi(RequireValue(index, argc, argv, argument));
+      } else if (argument == "--particle-kinetic-energy-gev") {
+        configuration.singleParticleKineticEnergyGeV =
+            std::stod(RequireValue(index, argc, argv, argument));
+      } else if (argument == "--particle-eta") {
+        configuration.singleParticleEta =
+            std::stod(RequireValue(index, argc, argv, argument));
+      } else if (argument == "--particle-phi") {
+        configuration.singleParticlePhi =
+            std::stod(RequireValue(index, argc, argv, argument));
       }
     }
 

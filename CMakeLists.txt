@@ -213,6 +213,27 @@ if(BUILD_TESTING)
       -Wpedantic
   )
   add_test(NAME configuration COMMAND configuration_test)
+
+  add_executable(
+    single_particle_kinematics_test
+    tests/SingleParticleKinematicsTest.cc
+  )
+  target_include_directories(
+    single_particle_kinematics_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    single_particle_kinematics_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  add_test(
+    NAME single_particle_kinematics
+    COMMAND single_particle_kinematics_test
+  )
 endif()
 
 install(TARGETS pythia_geant RUNTIME DESTINATION bin)

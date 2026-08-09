@@ -12,16 +12,17 @@ REQUIRED_KEYS = {
     "events",
     "threads",
     "seed_base",
-    "interaction_mode",
-    "mean_interactions",
-    "pythia_config",
     "physics_list",
     "output",
 }
 
 ALLOWED_KEYS = REQUIRED_KEYS | {
+    "generator_mode",
     "first_bcid",
+    "interaction_mode",
+    "mean_interactions",
     "fixed_interactions",
+    "pythia_config",
     "production_cut_mm",
     "beam_sigma_x_mm",
     "beam_sigma_y_mm",
@@ -32,6 +33,10 @@ ALLOWED_KEYS = REQUIRED_KEYS | {
     "generator_audit",
     "check_overlaps",
     "print_every",
+    "single_particle_pdg",
+    "single_particle_kinetic_energy_gev",
+    "single_particle_eta",
+    "single_particle_phi",
 }
 
 BOOLEAN_VALUES = {"true", "yes", "1", "false", "no", "0"}
@@ -96,7 +101,26 @@ def main() -> int:
     if unknown:
         raise ValueError("chaves desconhecidas: " + ", ".join(unknown))
 
-    if values["interaction_mode"] not in {"poisson", "fixed"}:
+    generator_mode = values.get("generator_mode", "pythia")
+    if generator_mode not in {"pythia", "single_particle"}:
+        raise ValueError("generator_mode deve ser 'pythia' ou 'single_particle'")
+
+    mode_required = (
+        {"interaction_mode", "mean_interactions", "pythia_config"}
+        if generator_mode == "pythia"
+        else {
+            "single_particle_pdg",
+            "single_particle_kinetic_energy_gev",
+            "single_particle_eta",
+            "single_particle_phi",
+        }
+    )
+    missing = sorted(mode_required - values.keys())
+    if missing:
+        raise ValueError("chaves obrigatórias ausentes: " + ", ".join(missing))
+
+    interaction_mode = values.get("interaction_mode", "poisson")
+    if interaction_mode not in {"poisson", "fixed"}:
         raise ValueError("interaction_mode deve ser 'poisson' ou 'fixed'")
 
     events = parse_int(values, "events")
@@ -109,7 +133,7 @@ def main() -> int:
         raise ValueError("threads deve ser positivo")
     if parse_int(values, "seed_base") <= 0:
         raise ValueError("seed_base deve ser positivo")
-    if parse_float(values, "mean_interactions") < 0.0:
+    if parse_float(values, "mean_interactions", "1.0") < 0.0:
         raise ValueError("mean_interactions não pode ser negativo")
     if parse_int(values, "fixed_interactions", "1") < 0:
         raise ValueError("fixed_interactions não pode ser negativo")
@@ -126,6 +150,20 @@ def main() -> int:
     max_abs_eta = parse_float(values, "max_abs_eta", "1.8")
     if not 0.0 < max_abs_eta <= 1.8:
         raise ValueError("max_abs_eta deve estar em (0, 1.8]")
+    if generator_mode == "single_particle":
+        if parse_int(values, "single_particle_pdg") == 0:
+            raise ValueError("single_particle_pdg não pode ser zero")
+        if parse_float(values, "single_particle_kinetic_energy_gev") <= 0.0:
+            raise ValueError(
+                "single_particle_kinetic_energy_gev deve ser positiva"
+            )
+        if abs(parse_float(values, "single_particle_eta")) > max_abs_eta:
+            raise ValueError("single_particle_eta deve respeitar max_abs_eta")
+        particle_phi = parse_float(values, "single_particle_phi")
+        if not -math.pi <= particle_phi <= math.pi:
+            raise ValueError(
+                "single_particle_phi deve estar no intervalo [-pi, pi]"
+            )
     if parse_int(values, "print_every", "10") <= 0:
         raise ValueError("print_every deve ser positivo")
     for key in ("transport_neutrinos", "generator_audit", "check_overlaps"):
@@ -133,37 +171,42 @@ def main() -> int:
         if value not in BOOLEAN_VALUES:
             raise ValueError(f"valor booleano inválido para {key}: {value}")
 
-    pythia_path = pathlib.Path(values["pythia_config"])
-    if not pythia_path.is_absolute():
-        pythia_path = config_path.parent / pythia_path
-    pythia_text = pythia_path.read_text(encoding="utf-8")
-    active_commands = []
-    for raw_line in pythia_text.splitlines():
-        line = raw_line.split("!", 1)[0].split("#", 1)[0].strip()
-        if line:
-            key, separator, value = line.partition("=")
-            active_commands.append(
-                f"{key.strip()} = {value.strip()}"
-                if separator
-                else " ".join(line.split())
+    if generator_mode == "pythia":
+        pythia_path = pathlib.Path(values["pythia_config"])
+        if not pythia_path.is_absolute():
+            pythia_path = config_path.parent / pythia_path
+        pythia_text = pythia_path.read_text(encoding="utf-8")
+        active_commands = []
+        for raw_line in pythia_text.splitlines():
+            line = raw_line.split("!", 1)[0].split("#", 1)[0].strip()
+            if line:
+                key, separator, value = line.partition("=")
+                active_commands.append(
+                    f"{key.strip()} = {value.strip()}"
+                    if separator
+                    else " ".join(line.split())
+                )
+        active_text = "\n".join(active_commands)
+
+        required_commands = (
+            "Beams:idA = 2212",
+            "Beams:idB = 2212",
+            "Beams:eCM = 14000.",
+            "SoftQCD:inelastic = on",
+        )
+        for command in required_commands:
+            if command not in active_text:
+                raise ValueError(f"comando PYTHIA obrigatório ausente: {command}")
+
+        if "SoftQCD:all = on" in active_text:
+            raise ValueError(
+                "SoftQCD:all inclui espalhamento elástico; use inelastic"
             )
-    active_text = "\n".join(active_commands)
-
-    required_commands = (
-        "Beams:idA = 2212",
-        "Beams:idB = 2212",
-        "Beams:eCM = 14000.",
-        "SoftQCD:inelastic = on",
-    )
-    for command in required_commands:
-        if command not in active_text:
-            raise ValueError(f"comando PYTHIA obrigatório ausente: {command}")
-
-    if "SoftQCD:all = on" in active_text:
-        raise ValueError("SoftQCD:all inclui espalhamento elástico; use inelastic")
 
     print(f"Configuração válida: {config_path}")
-    print(f"Arquivo PYTHIA: {pythia_path.resolve()}")
+    print(f"Modo do gerador: {generator_mode}")
+    if generator_mode == "pythia":
+        print(f"Arquivo PYTHIA: {pythia_path.resolve()}")
     return 0
 
 

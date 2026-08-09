@@ -68,6 +68,25 @@ output = output.root
 )";
 }
 
+std::string ValidSingleParticleConfiguration() {
+  return R"(generator_mode = single_particle
+events = 2
+first_bcid = 9
+threads = 1
+seed_base = 900
+physics_list = FTFP_BERT_ATL
+production_cut_mm = 1.0
+max_abs_eta = 1.8
+generator_audit = true
+print_every = 1
+single_particle_pdg = 11
+single_particle_kinetic_energy_gev = 10.0
+single_particle_eta = 0.25
+single_particle_phi = -1.5
+output = single.root
+)";
+}
+
 void ExpectRejected(const std::filesystem::path& configPath,
                     const std::string& text,
                     const std::string& expectedMessage) {
@@ -104,6 +123,8 @@ int main() {
     const pg::Configuration configuration =
         pg::Configuration::Load(configPath);
     Require(configuration.events == 3, "events changed while parsing");
+    Require(configuration.generatorMode == "pythia",
+            "legacy configuration did not default to PYTHIA");
     Require(configuration.firstBcid == 7, "first_bcid changed while parsing");
     Require(configuration.generatorAudit,
             "generator_audit changed while parsing");
@@ -111,6 +132,22 @@ int main() {
                 std::filesystem::weakly_canonical(
                     temporary.Path() / "pythia.cmnd"),
             "relative PYTHIA path was not resolved from the config directory");
+
+    Write(configPath, ValidSingleParticleConfiguration());
+    const pg::Configuration singleParticle =
+        pg::Configuration::Load(configPath);
+    Require(singleParticle.generatorMode == "single_particle",
+            "single-particle generator mode changed while parsing");
+    Require(singleParticle.pythiaConfig.empty(),
+            "single-particle mode unexpectedly requires a PYTHIA file");
+    Require(singleParticle.singleParticlePdg == 11,
+            "single-particle PDG changed while parsing");
+    Require(singleParticle.singleParticleKineticEnergyGeV == 10.0,
+            "single-particle kinetic energy changed while parsing");
+    Require(singleParticle.singleParticleEta == 0.25,
+            "single-particle eta changed while parsing");
+    Require(singleParticle.singleParticlePhi == -1.5,
+            "single-particle phi changed while parsing");
 
     ExpectRejected(configPath,
                    ValidConfiguration() + "generator_audi = true\n",
@@ -131,6 +168,31 @@ int main() {
                    Replace(ValidConfiguration(), "first_bcid = 7",
                            "first_bcid = 2147483647"),
                    "intervalo de BCIDs");
+    ExpectRejected(configPath,
+                   Replace(ValidSingleParticleConfiguration(),
+                           "generator_mode = single_particle",
+                           "generator_mode = gun"),
+                   "generator_mode");
+    ExpectRejected(configPath,
+                   Replace(ValidSingleParticleConfiguration(),
+                           "single_particle_pdg = 11",
+                           "single_particle_pdg = 0"),
+                   "single_particle_pdg");
+    ExpectRejected(configPath,
+                   Replace(ValidSingleParticleConfiguration(),
+                           "single_particle_kinetic_energy_gev = 10.0",
+                           "single_particle_kinetic_energy_gev = 0.0"),
+                   "single_particle_kinetic_energy_gev");
+    ExpectRejected(configPath,
+                   Replace(ValidSingleParticleConfiguration(),
+                           "single_particle_eta = 0.25",
+                           "single_particle_eta = 2.0"),
+                   "single_particle_eta");
+    ExpectRejected(configPath,
+                   Replace(ValidSingleParticleConfiguration(),
+                           "single_particle_phi = -1.5",
+                           "single_particle_phi = 4.0"),
+                   "single_particle_phi");
 
     std::cout << "Configuration tests passed" << std::endl;
     return 0;

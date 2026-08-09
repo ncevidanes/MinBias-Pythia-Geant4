@@ -12,12 +12,15 @@ struct Configuration {
   std::filesystem::path pythiaConfig;
   std::filesystem::path outputFile;
 
+  std::string generatorMode = "pythia";
+
   int events = 3;
   int firstBcid = 0;
   int threads = 1;
   int seedBase = 512;
   int fixedInteractions = 1;
   int printEvery = 1;
+  int singleParticlePdg = 11;
 
   double meanInteractions = 1.0;
   double productionCutMm = 1.0;
@@ -26,6 +29,9 @@ struct Configuration {
   double beamSigmaZmm = 0.0;
   double beamSigmaTns = 0.0;
   double maxAbsEta = 1.8;
+  double singleParticleKineticEnergyGeV = 10.0;
+  double singleParticleEta = 0.0;
+  double singleParticlePhi = 0.0;
 
   std::string interactionMode = "poisson";
   std::string physicsList = "FTFP_BERT_ATL";
@@ -45,4 +51,3 @@ struct Configuration {
 }  // namespace pg
 
 #endif
-

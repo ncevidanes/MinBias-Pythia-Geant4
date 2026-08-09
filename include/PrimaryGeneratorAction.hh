@@ -7,6 +7,7 @@
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "Pythia8/Pythia.h"
 
+#include <memory>
 #include <random>
 
 class G4Event;
@@ -25,9 +26,11 @@ class PrimaryGeneratorAction final
   double DrawGaussian(double sigma);
   void AuditPythiaParticle(int eventId, int bcid, int subevent, int index,
                            ParticleRejectionCode rejectionCode);
+  void GeneratePythiaPrimaries(G4Event* event);
+  void GenerateSingleParticle(G4Event* event);
 
   Configuration configuration_;
-  Pythia8::Pythia pythia_;
+  std::unique_ptr<Pythia8::Pythia> pythia_;
   std::mt19937_64 random_;
 };
 

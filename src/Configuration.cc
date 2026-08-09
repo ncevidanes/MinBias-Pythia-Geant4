@@ -123,6 +123,7 @@ Configuration Configuration::Load(const std::filesystem::path& filename) {
   }
 
   static const std::unordered_set<std::string> allowedKeys{
+      "generator_mode",
       "events",              "first_bcid",
       "threads",             "seed_base",
       "interaction_mode",    "mean_interactions",
@@ -133,6 +134,9 @@ Configuration Configuration::Load(const std::filesystem::path& filename) {
       "max_abs_eta",          "transport_neutrinos",
       "generator_audit",      "check_overlaps",
       "print_every",          "output",
+      "single_particle_pdg",
+      "single_particle_kinetic_energy_gev",
+      "single_particle_eta",  "single_particle_phi",
   };
   for (const auto& [key, value] : values) {
     (void)value;
@@ -154,13 +158,21 @@ Configuration Configuration::Load(const std::filesystem::path& filename) {
     return iterator == values.end() ? fallback : iterator->second;
   };
 
+  result.generatorMode = optional("generator_mode", "pythia");
   result.events = ParseInt(get("events"), "events");
   result.firstBcid = ParseInt(optional("first_bcid", "0"), "first_bcid");
   result.threads = ParseInt(get("threads"), "threads");
   result.seedBase = ParseInt(get("seed_base"), "seed_base");
-  result.interactionMode = get("interaction_mode");
-  result.meanInteractions =
-      ParseDouble(get("mean_interactions"), "mean_interactions");
+  if (result.generatorMode == "pythia") {
+    result.interactionMode = get("interaction_mode");
+    result.meanInteractions =
+        ParseDouble(get("mean_interactions"), "mean_interactions");
+  } else {
+    result.interactionMode = optional("interaction_mode", "poisson");
+    result.meanInteractions =
+        ParseDouble(optional("mean_interactions", "1.0"),
+                    "mean_interactions");
+  }
   result.fixedInteractions =
       ParseInt(optional("fixed_interactions", "1"), "fixed_interactions");
   result.physicsList = get("physics_list");
@@ -186,9 +198,37 @@ Configuration Configuration::Load(const std::filesystem::path& filename) {
       ParseBool(optional("check_overlaps", "false"), "check_overlaps");
   result.printEvery =
       ParseInt(optional("print_every", "10"), "print_every");
+  if (result.generatorMode == "single_particle") {
+    result.singleParticlePdg =
+        ParseInt(get("single_particle_pdg"), "single_particle_pdg");
+    result.singleParticleKineticEnergyGeV = ParseDouble(
+        get("single_particle_kinetic_energy_gev"),
+        "single_particle_kinetic_energy_gev");
+    result.singleParticleEta =
+        ParseDouble(get("single_particle_eta"), "single_particle_eta");
+    result.singleParticlePhi =
+        ParseDouble(get("single_particle_phi"), "single_particle_phi");
+  } else {
+    result.singleParticlePdg =
+        ParseInt(optional("single_particle_pdg", "11"),
+                 "single_particle_pdg");
+    result.singleParticleKineticEnergyGeV = ParseDouble(
+        optional("single_particle_kinetic_energy_gev", "10.0"),
+        "single_particle_kinetic_energy_gev");
+    result.singleParticleEta =
+        ParseDouble(optional("single_particle_eta", "0.0"),
+                    "single_particle_eta");
+    result.singleParticlePhi =
+        ParseDouble(optional("single_particle_phi", "0.0"),
+                    "single_particle_phi");
+  }
 
   const auto base = result.sourceFile.parent_path();
-  result.pythiaConfig = Resolve(base, get("pythia_config"));
+  if (result.generatorMode == "pythia") {
+    result.pythiaConfig = Resolve(base, get("pythia_config"));
+  } else if (values.count("pythia_config") != 0) {
+    result.pythiaConfig = Resolve(base, values.at("pythia_config"));
+  }
   result.outputFile = Resolve(base, get("output"));
 
   result.Validate();
@@ -196,6 +236,10 @@ Configuration Configuration::Load(const std::filesystem::path& filename) {
 }
 
 void Configuration::Validate() const {
+  if (generatorMode != "pythia" && generatorMode != "single_particle") {
+    throw std::runtime_error(
+        "generator_mode deve ser 'pythia' ou 'single_particle'");
+  }
   if (events <= 0) {
     throw std::runtime_error("events deve ser positivo");
   }
@@ -239,15 +283,36 @@ void Configuration::Validate() const {
   if (printEvery <= 0) {
     throw std::runtime_error("print_every deve ser positivo");
   }
-  if (!std::filesystem::is_regular_file(pythiaConfig)) {
+  if (generatorMode == "pythia" &&
+      !std::filesystem::is_regular_file(pythiaConfig)) {
     throw std::runtime_error("Arquivo PYTHIA inexistente: " +
                              pythiaConfig.string());
+  }
+  if (singleParticlePdg == 0) {
+    throw std::runtime_error("single_particle_pdg não pode ser zero");
+  }
+  if (!std::isfinite(singleParticleKineticEnergyGeV) ||
+      singleParticleKineticEnergyGeV <= 0.0) {
+    throw std::runtime_error(
+        "single_particle_kinetic_energy_gev deve ser finita e positiva");
+  }
+  if (!std::isfinite(singleParticleEta) ||
+      std::abs(singleParticleEta) > maxAbsEta) {
+    throw std::runtime_error(
+        "single_particle_eta deve ser finita e respeitar max_abs_eta");
+  }
+  constexpr double kPi = 3.14159265358979323846;
+  if (!std::isfinite(singleParticlePhi) || singleParticlePhi < -kPi ||
+      singleParticlePhi > kPi) {
+    throw std::runtime_error(
+        "single_particle_phi deve estar no intervalo [-pi, pi]");
   }
 }
 
 void Configuration::Print(std::ostream& output) const {
   output << std::boolalpha << std::setprecision(12)
          << "config = " << sourceFile << '\n'
+         << "generator_mode = " << generatorMode << '\n'
          << "events = " << events << '\n'
          << "first_bcid = " << firstBcid << '\n'
          << "threads = " << threads << '\n'
@@ -267,6 +332,11 @@ void Configuration::Print(std::ostream& output) const {
          << "generator_audit = " << generatorAudit << '\n'
          << "check_overlaps = " << checkOverlaps << '\n'
          << "print_every = " << printEvery << '\n'
+         << "single_particle_pdg = " << singleParticlePdg << '\n'
+         << "single_particle_kinetic_energy_gev = "
+         << singleParticleKineticEnergyGeV << '\n'
+         << "single_particle_eta = " << singleParticleEta << '\n'
+         << "single_particle_phi = " << singleParticlePhi << '\n'
          << "output = " << outputFile << '\n';
 }
 
