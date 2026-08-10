@@ -39,10 +39,12 @@ limita a geração transportada a `|eta| <= 1.8`.
 
 ## Dependências
 
-- compilador C++17;
+- compilador com suporte a C++20; o simulador permanece em C++17 e o
+  analisador ROOT é compilado em C++20;
 - CMake 3.20 ou superior;
 - Python 3 para validar os arquivos de configuração;
 - PYTHIA 8 com `pythia8-config` no `PATH`;
+- ROOT 6 com `root-config` no `PATH`;
 - Geant4 11.2 ou superior, compilado com suporte a ROOT para a saída `.root`.
 
 O código é compatível com o ambiente já observado no projeto:
@@ -138,6 +140,30 @@ Mapeamento de `sampling`:
 | 8 | TileExt2 |
 | 9 | TileExt3 |
 
+## Análise ROOT de partículas únicas
+
+O executável `single_particle_analyzer` analisa, sem modificar, um ROOT com
+`schema_version = 2` e `generator_mode = single_particle`:
+
+```bash
+./build/single_particle_analyzer \
+  --input outputs/single_particle.root \
+  --summary-csv outputs/single_particle_summary.csv \
+  --sampling-csv outputs/single_particle_samplings.csv
+```
+
+Em caso de sucesso, o programa imprime `ANALYSIS_RESULT=PASS`. O primeiro CSV
+contém uma linha de resumo da execução, com proveniência, parâmetros da
+partícula incidente, contagens, resposta, resolução e larguras ponderadas. O
+segundo contém exatamente dez linhas de dados, uma para cada sampling, inclusive
+quando o depósito é zero.
+
+O analisador rejeita esquema, modo, branches, tipos ou valores incompatíveis e
+confere a soma das energias dos samplings contra `events.total_edep_mev`. As
+métricas são operacionais para a campanha de partículas únicas; não convertem
+o índice de sampling em profundidade física e não caracterizam esta geometria
+simplificada como resposta oficial do ATLAS.
+
 ## Reprodutibilidade
 
 O mestre do Geant4 e cada trabalhador do PYTHIA recebem sementes derivadas de
@@ -181,7 +207,7 @@ Antes de criar uma tag de release, faça o commit da candidata, mantenha a
 ./scripts/audit_release.sh
 ```
 
-Ela realiza build limpo, cinco testes de regressão, dry runs, duas execuções
+Ela realiza build limpo, seis testes de regressão, dry runs, duas execuções
 smoke com a mesma semente, auditoria das quatro TTrees, comparação exata do
 conteúdo ROOT e inspeção do arquivo-fonte produzido por `git archive`. As
 evidências são gravadas sob `outputs/`, que não é versionado.

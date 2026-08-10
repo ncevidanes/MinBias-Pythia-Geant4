@@ -41,16 +41,31 @@ execute_process(
   COMMAND_ERROR_IS_FATAL ANY
 )
 
-set(PG_ROOT_VERSION "unavailable")
 find_program(ROOT_CONFIG_EXECUTABLE NAMES root-config)
-if(ROOT_CONFIG_EXECUTABLE)
-  execute_process(
-    COMMAND "${ROOT_CONFIG_EXECUTABLE}" --version
-    OUTPUT_VARIABLE PG_ROOT_VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-  )
+if(NOT ROOT_CONFIG_EXECUTABLE)
+  message(FATAL_ERROR
+    "root-config was not found. Activate the environment containing ROOT "
+    "or add its bin directory to PATH.")
 endif()
+
+execute_process(
+  COMMAND "${ROOT_CONFIG_EXECUTABLE}" --version
+  OUTPUT_VARIABLE PG_ROOT_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  COMMAND_ERROR_IS_FATAL ANY
+)
+execute_process(
+  COMMAND "${ROOT_CONFIG_EXECUTABLE}" --cflags
+  OUTPUT_VARIABLE ROOT_CXXFLAGS_RAW
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  COMMAND_ERROR_IS_FATAL ANY
+)
+execute_process(
+  COMMAND "${ROOT_CONFIG_EXECUTABLE}" --libs
+  OUTPUT_VARIABLE ROOT_LIBS_RAW
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  COMMAND_ERROR_IS_FATAL ANY
+)
 
 set(PG_GIT_COMMIT "unknown")
 set(PG_GIT_DESCRIBE "unknown")
@@ -93,10 +108,13 @@ configure_file(
 
 separate_arguments(PYTHIA8_CXXFLAGS NATIVE_COMMAND "${PYTHIA8_CXXFLAGS_RAW}")
 separate_arguments(PYTHIA8_LIBS NATIVE_COMMAND "${PYTHIA8_LIBS_RAW}")
+separate_arguments(ROOT_CXXFLAGS NATIVE_COMMAND "${ROOT_CXXFLAGS_RAW}")
+separate_arguments(ROOT_LIBS NATIVE_COMMAND "${ROOT_LIBS_RAW}")
 
-# Preserve the project's C++17 contract even if an older pythia8-config
+# Preserve the project's C++17 contract even if a dependency helper
 # injects its own -std= flag.
 list(FILTER PYTHIA8_CXXFLAGS EXCLUDE REGEX "^-std=")
+list(FILTER ROOT_CXXFLAGS EXCLUDE REGEX "^-std=")
 
 add_executable(
   pythia_geant
@@ -135,6 +153,52 @@ target_link_libraries(
   PRIVATE
     ${Geant4_LIBRARIES}
     ${PYTHIA8_LIBS}
+)
+
+add_library(
+  single_particle_analysis
+  src/SingleParticleAnalysis.cc
+  src/Sampling.cc
+)
+target_include_directories(
+  single_particle_analysis
+  PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+)
+target_compile_options(
+  single_particle_analysis
+  PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+)
+
+add_executable(
+  single_particle_analyzer
+  app/analyze_single_particle.cc
+)
+# ROOT 6.36.06 in the validated environment was built with C++20.
+# Keep the simulator on C++17 and match ROOT only at this API boundary.
+set_target_properties(
+  single_particle_analyzer
+  PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
+target_compile_options(
+  single_particle_analyzer
+  PRIVATE
+    ${ROOT_CXXFLAGS}
+    -Wall
+    -Wextra
+    -Wpedantic
+)
+target_link_libraries(
+  single_particle_analyzer
+  PRIVATE
+    single_particle_analysis
+    ${ROOT_LIBS}
 )
 
 include(CTest)
@@ -233,6 +297,27 @@ if(BUILD_TESTING)
   add_test(
     NAME single_particle_kinematics
     COMMAND single_particle_kinematics_test
+  )
+
+  add_executable(
+    single_particle_analysis_test
+    tests/SingleParticleAnalysisTest.cc
+  )
+  target_compile_options(
+    single_particle_analysis_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  target_link_libraries(
+    single_particle_analysis_test
+    PRIVATE
+      single_particle_analysis
+  )
+  add_test(
+    NAME single_particle_analysis
+    COMMAND single_particle_analysis_test
   )
 endif()
 

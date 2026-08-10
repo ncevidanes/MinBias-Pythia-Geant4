@@ -33,12 +33,16 @@ Devem estar registrados e aprovados:
 - `cell_segmentation`;
 - `seed_policy`;
 - `configuration`;
-- `single_particle_kinematics`.
+- `single_particle_kinematics`;
+- `single_particle_analysis`.
 
 O teste `seed_policy` cobre normalização, limites, sementes por trabalhador,
 wrap-around e ausência de colisões no intervalo exercitado pelo teste.
 O teste `configuration` cobre resolução de caminhos, chaves desconhecidas,
 números malformados ou não finitos, sigmas negativos e overflow de BCID.
+O teste `single_particle_analysis` cobre estatísticas de energia, samplings
+sem depósito, larguras ponderadas e tratamento periódico de phi sem depender
+de um arquivo ROOT externo.
 
 ## 3. Geração
 
@@ -62,6 +66,33 @@ Avalie:
 - profundidade e largura dos chuveiros;
 - resposta e resolução por sampling;
 - estabilidade com a production cut.
+
+### 4.1 Analisador ROOT
+
+Para cada arquivo da campanha, execute o analisador independente:
+
+```bash
+./build/single_particle_analyzer \
+  --input outputs/cycle6-stage63a/single_particle_schema2.root \
+  --summary-csv outputs/cycle6-stage63c/summary.csv \
+  --sampling-csv outputs/cycle6-stage63c/samplings.csv
+```
+
+Critérios:
+
+- o processo termina com `ANALYSIS_RESULT=PASS`;
+- o resumo possui cabeçalho e uma linha de dados;
+- o arquivo por sampling possui cabeçalho e exatamente dez linhas de dados;
+- duas execuções sobre o mesmo ROOT produzem CSVs idênticos byte a byte;
+- o hash do ROOT de entrada permanece inalterado;
+- a soma dos depósitos por sampling coincide com
+  `events.total_edep_mev` dentro da tolerância numérica.
+
+O checkpoint da Etapa 6.3C, com três elétrons de 10 GeV em eta e phi iguais a
+zero, produziu depósito médio de `2306.779052037 MeV`, resposta média de
+`0.230677905` e resolução relativa de `0.013059670`. Esses valores validam a
+regressão do analisador para esse arquivo; a amostra de três eventos não deve
+ser usada como conclusão de desempenho físico.
 
 ## 5. Geometria
 
