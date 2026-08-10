@@ -15,7 +15,7 @@ Critérios:
 - `FTFP_BERT_ATL` é encontrada;
 - não há sobreposições geométricas no smoke test;
 - o ROOT contém `events`, `hits`, `generator` e `metadata`;
-- `metadata` contém exatamente uma entrada e 34 branches;
+- `metadata` contém exatamente uma entrada e 39 branches;
 - `generator` está preenchida quando `generator_audit = true`.
 
 ## 2. Testes de regressão
@@ -32,7 +32,8 @@ Devem estar registrados e aprovados:
 - `particle_decision`;
 - `cell_segmentation`;
 - `seed_policy`;
-- `configuration`.
+- `configuration`;
+- `single_particle_kinematics`.
 
 O teste `seed_policy` cobre normalização, limites, sementes por trabalhador,
 wrap-around e ausência de colisões no intervalo exercitado pelo teste.
@@ -52,8 +53,10 @@ Em uma amostra com `generator_audit = true`, verificar:
 
 ## 4. Transporte unitário
 
-Antes de minimum-bias em larga escala, acrescente um modo de partículas únicas
-e teste elétrons, fótons e píons em 1, 10 e 100 GeV. Avalie:
+Antes de minimum-bias em larga escala, use o modo de partículas únicas
+para testar elétrons, fótons e píons em 1, 10 e 100 GeV. Confirme na
+`metadata` o modo do gerador, PDG, energia cinética, eta e phi incidentes.
+Avalie:
 
 - conservação contábil da energia;
 - profundidade e largura dos chuveiros;

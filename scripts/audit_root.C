@@ -150,7 +150,10 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
                  "beam_sigma_z_mm", "beam_sigma_t_ns", "max_abs_eta",
                  "transport_neutrinos", "generator_audit", "check_overlaps",
                  "print_every", "config_file", "output_file",
-                 "normalized_config"},
+                 "normalized_config", "generator_mode",
+                 "single_particle_pdg",
+                 "single_particle_kinetic_energy_gev",
+                 "single_particle_eta", "single_particle_phi"},
                 audit);
 
   audit.Check(metadata->GetEntries() == 1,
@@ -160,11 +163,27 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
   int configuredEvents = -1;
   int firstBcid = -1;
   int generatorAudit = -1;
+  int singleParticlePdg = 0;
+  double maxAbsEta = -1.0;
+  double singleParticleKineticEnergyGeV = 0.0;
+  double singleParticleEta = 0.0;
+  double singleParticlePhi = 0.0;
+  std::string generatorMode;
   if (metadata->GetEntries() == 1) {
     metadata->SetBranchAddress("schema_version", &schemaVersion);
     metadata->SetBranchAddress("events", &configuredEvents);
     metadata->SetBranchAddress("first_bcid", &firstBcid);
     metadata->SetBranchAddress("generator_audit", &generatorAudit);
+    metadata->SetBranchAddress("max_abs_eta", &maxAbsEta);
+    metadata->SetBranchAddress(
+        "single_particle_pdg", &singleParticlePdg);
+    metadata->SetBranchAddress(
+        "single_particle_kinetic_energy_gev",
+        &singleParticleKineticEnergyGeV);
+    metadata->SetBranchAddress(
+        "single_particle_eta", &singleParticleEta);
+    metadata->SetBranchAddress(
+        "single_particle_phi", &singleParticlePhi);
     metadata->GetEntry(0);
     const std::string projectVersion =
         ReadTextBranch(*metadata, "project_version", audit);
@@ -178,7 +197,9 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
         ReadTextBranch(*metadata, "geant4_version", audit);
     const std::string pythiaVersion =
         ReadTextBranch(*metadata, "pythia_version", audit);
-    audit.Check(schemaVersion == 1, "schema_version deve ser 1");
+    generatorMode =
+        ReadTextBranch(*metadata, "generator_mode", audit);
+    audit.Check(schemaVersion == 2, "schema_version deve ser 2");
     audit.Check(configuredEvents > 0, "metadata.events deve ser positivo");
     audit.Check(firstBcid >= 0, "metadata.first_bcid não pode ser negativo");
     audit.Check(generatorAudit == 0 || generatorAudit == 1,
@@ -200,6 +221,25 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
                 "metadata.geant4_version está vazia");
     audit.Check(!pythiaVersion.empty(),
                 "metadata.pythia_version está vazia");
+    audit.Check(generatorMode == "pythia" ||
+                    generatorMode == "single_particle",
+                "metadata.generator_mode é inválido");
+    if (generatorMode == "single_particle") {
+      constexpr double kPi = 3.14159265358979323846;
+      audit.Check(singleParticlePdg != 0,
+                  "metadata.single_particle_pdg não pode ser zero");
+      audit.Check(std::isfinite(singleParticleKineticEnergyGeV) &&
+                      singleParticleKineticEnergyGeV > 0.0,
+                  "energia cinética da partícula única é inválida");
+      audit.Check(std::isfinite(maxAbsEta) && maxAbsEta > 0.0 &&
+                      std::isfinite(singleParticleEta) &&
+                      std::abs(singleParticleEta) <= maxAbsEta,
+                  "eta da partícula única é inválido");
+      audit.Check(std::isfinite(singleParticlePhi) &&
+                      singleParticlePhi >= -kPi &&
+                      singleParticlePhi <= kPi,
+                  "phi da partícula única é inválido");
+    }
     metadata->ResetBranchAddresses();
   }
 
@@ -264,6 +304,16 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
                     requested == generated + generationFailures,
                 "contabilidade de interações inválida no evento " +
                     std::to_string(event));
+    if (generatorMode == "single_particle") {
+      audit.Check(requested == 1 && generated == 1 &&
+                      generationFailures == 0,
+                  "contabilidade de interações inválida no modo "
+                  "single_particle");
+      audit.Check(generatorParticles == 1 && transported == 1 &&
+                      unknownPdg == 0,
+                  "contabilidade de partículas inválida no modo "
+                  "single_particle");
+    }
     audit.Check(generatorParticles >= 0 && transported >= 0 &&
                     unknownPdg >= 0 && rejectedNotFinal >= 0 &&
                     rejectedNeutrino >= 0 && rejectedInvisible >= 0 &&
@@ -362,13 +412,23 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
   int generatorEvent = -1;
   int generatorBcid = -1;
   int generatorSubevent = -1;
+  int generatorPdg = 0;
   int accepted = -1;
   int rejectionCode = -1;
+  double generatorEnergyGeV = 0.0;
+  double generatorMassGeV = 0.0;
+  double generatorEta = 0.0;
+  double generatorPhi = 0.0;
   generator->SetBranchAddress("event", &generatorEvent);
   generator->SetBranchAddress("bcid", &generatorBcid);
   generator->SetBranchAddress("subevent", &generatorSubevent);
   generator->SetBranchAddress("accepted_for_transport", &accepted);
   generator->SetBranchAddress("rejection_code", &rejectionCode);
+  generator->SetBranchAddress("pdg", &generatorPdg);
+  generator->SetBranchAddress("energy_gev", &generatorEnergyGeV);
+  generator->SetBranchAddress("mass_gev", &generatorMassGeV);
+  generator->SetBranchAddress("eta", &generatorEta);
+  generator->SetBranchAddress("phi", &generatorPhi);
   for (Long64_t entry = 0; entry < generator->GetEntries(); ++entry) {
     generator->GetEntry(entry);
     const auto eventIterator = requestedByEvent.find(generatorEvent);
@@ -386,6 +446,20 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
     audit.Check((accepted == 1 && rejectionCode == 0) ||
                     (accepted == 0 && rejectionCode != 0),
                 "accepted_for_transport diverge de rejection_code");
+    if (generatorMode == "single_particle") {
+      audit.Check(generatorPdg == singleParticlePdg,
+                  "PDG do generator diverge da metadata");
+      audit.Check(accepted == 1 && rejectionCode == 0,
+                  "partícula única não foi aceita para transporte");
+      audit.Check(
+          NearlyEqual(generatorEnergyGeV - generatorMassGeV,
+                      singleParticleKineticEnergyGeV),
+          "energia cinética do generator diverge da metadata");
+      audit.Check(NearlyEqual(generatorEta, singleParticleEta),
+                  "eta do generator diverge da metadata");
+      audit.Check(NearlyEqual(generatorPhi, singleParticlePhi),
+                  "phi do generator diverge da metadata");
+    }
   }
   generator->ResetBranchAddresses();
 

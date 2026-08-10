@@ -147,6 +147,12 @@ void RootOutput::Book() {
   analysis->CreateNtupleSColumn("config_file");
   analysis->CreateNtupleSColumn("output_file");
   analysis->CreateNtupleSColumn("normalized_config");
+  analysis->CreateNtupleSColumn("generator_mode");
+  analysis->CreateNtupleIColumn("single_particle_pdg");
+  analysis->CreateNtupleDColumn(
+      "single_particle_kinetic_energy_gev");
+  analysis->CreateNtupleDColumn("single_particle_eta");
+  analysis->CreateNtupleDColumn("single_particle_phi");
   analysis->FinishNtuple();
 }
 
@@ -235,6 +241,17 @@ void RootOutput::WriteMetadata(const Configuration& configuration) {
       kMetadataNtuple, 32, configuration.outputFile.string());
   analysis->FillNtupleSColumn(
       kMetadataNtuple, 33, configuration.NormalizedText());
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 34, configuration.generatorMode);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 35, configuration.singleParticlePdg);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 36,
+      configuration.singleParticleKineticEnergyGeV);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 37, configuration.singleParticleEta);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 38, configuration.singleParticlePhi);
   analysis->AddNtupleRow(kMetadataNtuple);
 }
 

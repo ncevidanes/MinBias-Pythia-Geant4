@@ -90,7 +90,7 @@ O arquivo contém quatro TTrees:
 |---|---|
 | `events` | metadados do bunch crossing, \(\mu\), interações sorteadas/geradas, falhas e contagens de partículas |
 | `hits` | energia depositada por `(evento, subevento, célula)`, tempo médio ponderado por energia e maior contribuição individual |
-| `generator` | registro completo do PYTHIA para auditoria; preenchido somente com `generator_audit = true` |
+| `generator` | registro do gerador para auditoria; preenchido somente com `generator_audit = true` |
 | `metadata` | uma entrada por execução com configuração normalizada, política de sementes, versões e proveniência |
 
 Campos principais de `hits`:
@@ -102,7 +102,7 @@ edep_mev, time_mean_ns, time_first_ns,
 leading_pdg, leading_track_id, leading_parent_id
 ```
 
-A TTree `metadata` possui uma entrada e 34 branches:
+A TTree `metadata` possui uma entrada e 39 branches:
 
 ```text
 schema_version, project_version, git_commit, git_describe,
@@ -114,7 +114,10 @@ interaction_mode, mean_interactions, fixed_interactions,
 pythia_config, physics_list, production_cut_mm,
 beam_sigma_x_mm, beam_sigma_y_mm, beam_sigma_z_mm, beam_sigma_t_ns,
 max_abs_eta, transport_neutrinos, generator_audit, check_overlaps,
-print_every, config_file, output_file, normalized_config
+print_every, config_file, output_file, normalized_config,
+generator_mode, single_particle_pdg,
+single_particle_kinetic_energy_gev,
+single_particle_eta, single_particle_phi
 ```
 
 Isso permite auditar o arquivo ROOT sem depender do diretório em que a
@@ -178,7 +181,7 @@ Antes de criar uma tag de release, faça o commit da candidata, mantenha a
 ./scripts/audit_release.sh
 ```
 
-Ela realiza build limpo, quatro testes de regressão, dry runs, duas execuções
+Ela realiza build limpo, cinco testes de regressão, dry runs, duas execuções
 smoke com a mesma semente, auditoria das quatro TTrees, comparação exata do
 conteúdo ROOT e inspeção do arquivo-fonte produzido por `git archive`. As
 evidências são gravadas sob `outputs/`, que não é versionado.
