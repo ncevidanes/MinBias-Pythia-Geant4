@@ -327,6 +327,12 @@ if(BUILD_TESTING)
     COMMAND "${Python3_EXECUTABLE}" -B
       "${PROJECT_SOURCE_DIR}/tests/test_statistical_aggregator.py"
   )
+
+  add_test(
+    NAME statistical_campaign_executor
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_statistical_campaign_executor.py"
+  )
 endif()
 
 install(TARGETS pythia_geant RUNTIME DESTINATION bin)
