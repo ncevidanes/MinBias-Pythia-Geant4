@@ -203,6 +203,8 @@ target_link_libraries(
 
 include(CTest)
 if(BUILD_TESTING)
+  find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+
   add_executable(
     particle_decision_test
     tests/ParticleDecisionTest.cc
@@ -318,6 +320,12 @@ if(BUILD_TESTING)
   add_test(
     NAME single_particle_analysis
     COMMAND single_particle_analysis_test
+  )
+
+  add_test(
+    NAME statistical_aggregator
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_statistical_aggregator.py"
   )
 endif()
 
