@@ -94,6 +94,38 @@ zero, produziu depósito médio de `2306.779052037 MeV`, resposta média de
 regressão do analisador para esse arquivo; a amostra de três eventos não deve
 ser usada como conclusão de desempenho físico.
 
+### 4.2 Campanha 3 × 3
+
+A Etapa 6.3D fixa três espécies, três energias e 100 eventos por ponto. Execute
+primeiro a validação sem transporte:
+
+```bash
+./scripts/run_single_particle_campaign.sh --dry-run
+```
+
+Depois de fazer commit e manter o worktree rastreado limpo, execute:
+
+```bash
+./scripts/run_single_particle_campaign.sh
+```
+
+A campanha somente é aprovada quando o terminal e
+`outputs/cycle6-stage63d/campaign_validation.txt` registram
+`CAMPAIGN_RESULT=PASS`. O executor verifica automaticamente:
+
+- nove casos concluídos e analisados;
+- 100 eventos e dez linhas de sampling por caso;
+- parâmetros incidentes iguais à matriz documentada;
+- métricas finitas, hits positivos e depósito médio positivo;
+- repetição byte a byte dos CSVs;
+- preservação do SHA-256 dos ROOTs;
+- crescimento do depósito médio com 1, 10 e 100 GeV para cada espécie.
+
+Preserve `campaign_summary.csv`, `campaign_manifest.tsv`,
+`campaign_validation.txt`, os logs, manifestos e ROOTs. A especificação
+completa está em
+`docs/cycle-6.3-single-particle-campaign/campaign-spec.md`.
+
 ## 5. Geometria
 
 Conferir separadamente:

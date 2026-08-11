@@ -164,6 +164,28 @@ métricas são operacionais para a campanha de partículas únicas; não convert
 o índice de sampling em profundidade física e não caracterizam esta geometria
 simplificada como resposta oficial do ATLAS.
 
+### Campanha controlada de partículas únicas
+
+A Etapa 6.3D executa elétrons, fótons e píons positivos em 1, 10 e 100 GeV,
+com 100 eventos por caso, uma thread e sementes fixas. Antes do transporte,
+valide a matriz:
+
+```bash
+./scripts/run_single_particle_campaign.sh --dry-run
+```
+
+Após fazer commit das alterações rastreadas, execute a campanha completa:
+
+```bash
+./scripts/run_single_particle_campaign.sh
+```
+
+O executor analisa cada ROOT duas vezes, confere a identidade byte a byte dos
+CSVs, verifica que o ROOT não foi modificado e agrega os nove resumos. Os
+resultados são gravados em `outputs/cycle6-stage63d/`, que não é versionado.
+Consulte `docs/cycle-6.3-single-particle-campaign/campaign-spec.md` para a
+matriz, as sementes, os critérios de aceite e os limites de interpretação.
+
 ## Reprodutibilidade
 
 O mestre do Geant4 e cada trabalhador do PYTHIA recebem sementes derivadas de
