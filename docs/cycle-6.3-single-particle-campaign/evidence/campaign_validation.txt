@@ -1,0 +1,7 @@
+CAMPAIGN_RESULT=PASS
+cases=9
+events_per_case=100
+sampling_rows_per_case=10
+repeat_analysis=byte_identical
+root_hash=unchanged
+mean_deposit_monotonic_by_particle=true

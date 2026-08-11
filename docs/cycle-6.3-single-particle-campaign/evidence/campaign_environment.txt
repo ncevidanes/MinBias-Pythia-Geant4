@@ -1,0 +1,10 @@
+campaign=cycle6-stage63d
+captured_at_utc=2026-08-11T16:22:03Z
+git_commit=a77bb1f9f36a7131cfb06eecf4e5a621d702ed20
+git_branch=master
+system=Linux 7.0.0-29-generic x86_64
+cmake=cmake version 4.2.3
+compiler=c++ (conda-forge gcc 14.3.0-16) 14.3.0
+root=6.36.06
+geant4=11.3.2
+pythia8=8.312
