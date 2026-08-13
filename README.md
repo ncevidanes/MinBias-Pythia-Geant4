@@ -1,5 +1,7 @@
 # PYTHIA → Geant4 em uma única execução
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21862454.svg)](https://doi.org/10.5281/zenodo.21862454)
+
 Este projeto substitui o fluxo provisório
 
 ```text
@@ -241,6 +243,7 @@ Leia também:
 - `docs/PROVENANCE_AUDIT.md`;
 - `docs/LICENSE_AUDIT.md`;
 - `docs/CITATION_AUDIT.md`;
+- `docs/ZENODO_AUDIT.md`;
 - `docs/TECHNICAL_AUDIT.md`;
 - `THIRD_PARTY_NOTICES.md`.
 
@@ -261,16 +264,17 @@ Leia também:
 
 ## Como citar
 
-O arquivo `CITATION.cff` contém os metadados canônicos. Enquanto o DOI desta
-versão ainda não tiver sido emitido, use a referência provisória:
+O arquivo `CITATION.cff` contém os metadados canônicos. Para reproduzir ou
+discutir especificamente a primeira release, use o DOI da versão `v0.1.0`:
 
-> de Assis, N. C. N. (2026). *MinBias-Pythia-Geant4* (Version 0.1.0)
-> [Computer software]. GitHub.
-> <https://github.com/ncevidanes/MinBias-Pythia-Geant4>
+> Assis, N. C. N. (2026). *MinBias-Pythia-Geant4* (Version v0.1.0)
+> [Computer software]. Zenodo.
+> <https://doi.org/10.5281/zenodo.21862455>
 
-Depois do arquivamento no Zenodo, a referência deverá usar o DOI específico da
-versão `0.1.0`. O DOI conceitual será mantido para direcionar leitores à versão
-mais recente do projeto.
+O DOI conceitual <https://doi.org/10.5281/zenodo.21862454> representa o projeto
+e direciona para sua versão mais recente. O DOI específico acima identifica o
+artefato imutável de `v0.1.0`. A cadeia de publicação e as verificações do
+registro estão documentadas em `docs/ZENODO_AUDIT.md`.
 
 A citação deste software não substitui a citação do artigo do Lorenzetti quando
 os parâmetros da geometria derivada forem relevantes para o trabalho. Consulte
