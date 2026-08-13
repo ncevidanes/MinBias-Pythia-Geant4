@@ -1,0 +1,14 @@
+campaign=cycle6-stage64c
+captured_at_utc=2026-08-13T12:27:47Z
+capture_scope=post_campaign_same_activated_environment
+git_commit=a7c24f9127a09699234e84399bf307ace29566c3
+git_branch=cycle-6.4-statistical-validation
+system=Linux 7.0.0-29-generic x86_64
+cmake=cmake version 4.2.3
+compiler=c++ (conda-forge gcc 14.3.0-16) 14.3.0
+root=6.36.06
+geant4=11.3.2
+pythia8=8.312
+simulation_threads=1
+runs=45
+events=9000
