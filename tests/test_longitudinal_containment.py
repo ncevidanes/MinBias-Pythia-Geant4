@@ -8,6 +8,7 @@ import importlib.util
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -136,6 +137,25 @@ class LongitudinalContainmentTest(unittest.TestCase):
             self._run("--max-tile-extended-fraction", "0.009")
         self.assertFalse(self.output.exists())
         self.assertFalse(self.validation.exists())
+
+    def test_csv_is_independent_of_builtin_float_sum(self) -> None:
+        self._run()
+        expected_output = self.output.read_bytes()
+        expected_validation = self.validation.read_bytes()
+        self.output.unlink()
+        self.validation.unlink()
+
+        def legacy_sum(values, start=0):
+            total = start
+            for value in values:
+                total = total + value
+            return total
+
+        with mock.patch("builtins.sum", side_effect=legacy_sum):
+            self._run()
+
+        self.assertEqual(self.output.read_bytes(), expected_output)
+        self.assertEqual(self.validation.read_bytes(), expected_validation)
 
 
 if __name__ == "__main__":

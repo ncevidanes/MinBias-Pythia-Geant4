@@ -89,6 +89,11 @@ The analyzer writes:
   containment samplings, closure error, and the outer-tail flag;
 - `containment_validation.txt`: machine-readable acceptance markers and extrema.
 
+Floating-point reductions that affect validation or versioned output use
+`math.fsum`. This avoids the version-dependent result of Python's built-in
+`sum` algorithm and makes the CSV serialization stable across supported Python
+versions for byte-level reproducibility checks.
+
 Suggested local execution:
 
 ```bash

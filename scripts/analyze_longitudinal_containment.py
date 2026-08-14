@@ -215,9 +215,9 @@ def read_samplings(
             raise ValueError(f"incomplete sampling set at point {key}")
         means = tuple(grouped[key][index] for index in range(len(SAMPLING_NAMES)))
         total_mean = float(summary[key]["mean_energy_mev"])
-        if not nearly_equal(sum(means), total_mean):
+        if not nearly_equal(math.fsum(means), total_mean):
             raise ValueError(f"sampling means do not close at point {key}")
-        if not nearly_equal(sum(fractions[key].values()), 1.0):
+        if not nearly_equal(math.fsum(fractions[key].values()), 1.0):
             raise ValueError(f"sampling fractions do not close at point {key}")
         result[key] = means
     return result
@@ -275,10 +275,10 @@ def analyze(
             "mean_energy_mev": total_mean,
         }
         row.update({
-            name: sum(fractions[index] for index in indices)
+            name: math.fsum(fractions[index] for index in indices)
             for name, indices in GROUPS.items()
         })
-        row["fraction_closure_error"] = abs(sum(fractions) - 1.0)
+        row["fraction_closure_error"] = abs(math.fsum(fractions) - 1.0)
         for threshold, name_field, index_field in CONTAINMENT_THRESHOLDS:
             name, index = threshold_sampling(fractions, threshold)
             row[name_field] = name
