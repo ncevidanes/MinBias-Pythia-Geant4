@@ -188,6 +188,34 @@ resultados são gravados em `outputs/cycle6-stage63d/`, que não é versionado.
 Consulte `docs/cycle-6.3-single-particle-campaign/campaign-spec.md` para a
 matriz, as sementes, os critérios de aceite e os limites de interpretação.
 
+### Validação estatística e contenção longitudinal
+
+O Ciclo 6.4 ampliou a matriz para cinco sementes independentes por ponto,
+totalizando 45 execuções e 9.000 eventos. A precisão estatística operacional
+foi aprovada nos nove pontos; o maior semicomprimento relativo do IC95 foi
+2,060799%, abaixo do limite predefinido de 3%. Os resultados e a proveniência
+estão em
+[`docs/cycle-6.4-statistical-validation/campaign-report.md`](docs/cycle-6.4-statistical-validation/campaign-report.md).
+
+O Ciclo 6.5 deriva dessas evidências as frações de energia por grupo de
+sampling e os primeiros samplings que acumulam 90%, 95% e 99% da energia
+depositada observada. Para reproduzir a análise sem refazer o transporte:
+
+```bash
+python3 scripts/analyze_longitudinal_containment.py \
+  --summary docs/cycle-6.4-statistical-validation/evidence/statistical_summary.csv \
+  --samplings docs/cycle-6.4-statistical-validation/evidence/statistical_samplings.csv \
+  --output outputs/cycle6-stage65-repeat/containment_summary.csv \
+  --validation outputs/cycle6-stage65-repeat/containment_validation.txt
+```
+
+O resultado operacional foi aprovado nos nove pontos. Elétrons e fótons
+alcançam 99% até `EMB3`; píons positivos de 10 e 100 GeV alcançam 99% em
+`TileCal3`. O ponto de píon positivo a 100 GeV requer o estudo sistemático da
+cauda externa no ciclo seguinte. Consulte o
+[`relatório do Ciclo 6.5`](docs/cycle-6.5-longitudinal-containment/analysis-report.md)
+para resultados, hashes, critérios e limites científicos.
+
 ## Reprodutibilidade
 
 O mestre do Geant4 e cada trabalhador do PYTHIA recebem sementes derivadas de

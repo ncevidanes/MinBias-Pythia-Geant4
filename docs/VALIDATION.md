@@ -34,7 +34,10 @@ Devem estar registrados e aprovados:
 - `seed_policy`;
 - `configuration`;
 - `single_particle_kinematics`;
-- `single_particle_analysis`.
+- `single_particle_analysis`;
+- `statistical_aggregator`;
+- `statistical_campaign_executor`;
+- `longitudinal_containment`.
 
 O teste `seed_policy` cobre normalização, limites, sementes por trabalhador,
 wrap-around e ausência de colisões no intervalo exercitado pelo teste.
@@ -125,6 +128,44 @@ Preserve `campaign_summary.csv`, `campaign_manifest.tsv`,
 `campaign_validation.txt`, os logs, manifestos e ROOTs. A especificação
 completa está em
 `docs/cycle-6.3-single-particle-campaign/campaign-spec.md`.
+
+### 4.3 Estatística multi-semente e contenção operacional
+
+O Ciclo 6.4 executa cinco sementes independentes por ponto da matriz 3 × 3,
+com 200 eventos por execução. O agregador deve terminar com
+`STATISTICAL_AGGREGATION_RESULT=PASS`, preservar os 45 identificadores de
+semente como valores globalmente únicos e satisfazer o limite predefinido de
+3% para o semicomprimento relativo do IC95 da média depositada.
+
+Depois da aprovação estatística, derive as frações por sampling e a contenção
+longitudinal operacional a partir das tabelas versionadas:
+
+```bash
+python3 scripts/analyze_longitudinal_containment.py \
+  --summary docs/cycle-6.4-statistical-validation/evidence/statistical_summary.csv \
+  --samplings docs/cycle-6.4-statistical-validation/evidence/statistical_samplings.csv \
+  --output outputs/cycle6-stage65-repeat/containment_summary.csv \
+  --validation outputs/cycle6-stage65-repeat/containment_validation.txt
+```
+
+Critérios:
+
+- nove pontos, cinco execuções e 1.000 eventos agregados por ponto;
+- 90 linhas de sampling e fechamento das frações dentro de `1e-9`;
+- limiares de 90%, 95% e 99% alcançados no caminho central;
+- elétrons e fótons alcançam 99% até `EMB3`;
+- fração de `TileExt` não superior a 1% em incidência normal.
+
+Uma fração de `TileCal3` superior a 1% produz
+`outer_tail_review=REQUIRED`, mas não reprova isoladamente a análise. Esse
+marcador seleciona os pontos que exigem variação controlada de eta e
+`production_cut` no ciclo sistemático seguinte. `TileCal3` é um indicador de
+cauda na última camada central ativa, não uma estimativa de energia invisível
+fora da geometria.
+
+Os resultados aprovados, o manifesto SHA-256 e os limites científicos estão
+em `docs/cycle-6.4-statistical-validation/campaign-report.md` e
+`docs/cycle-6.5-longitudinal-containment/analysis-report.md`.
 
 ## 5. Geometria
 
