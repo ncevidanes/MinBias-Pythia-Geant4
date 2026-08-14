@@ -1,0 +1,17 @@
+LONGITUDINAL_CONTAINMENT_RESULT=PASS
+physical_points=9
+runs_per_point=5
+events_per_point=1000
+sampling_rows=90
+fraction_closure=PASS
+central_containment_90=PASS
+central_containment_95=PASS
+central_containment_99=PASS
+electromagnetic_containment_99_by_emb3=PASS
+max_tile_extended_fraction=0.0047341076541614928
+required_max_tile_extended_fraction=0.01
+tile_extended_activity=PASS
+max_tilecal3_outer_fraction=0.021468174074600496
+outer_tail_review_threshold=0.01
+outer_tail_review_points=1
+outer_tail_review=REQUIRED
