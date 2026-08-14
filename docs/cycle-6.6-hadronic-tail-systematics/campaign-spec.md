@@ -7,9 +7,10 @@ Investigate the `TileCal3` outer-tail marker observed for positive pions at
 Geant4 production cut while keeping the incident particle, energy, azimuth,
 physics list, event count, thread count, and paired seed set fixed.
 
-Cycle 6.6A establishes and tests the resolved configuration contract only.
-It intentionally blocks transport until the systematic aggregator and its
-acceptance logic are versioned in the next stage.
+Cycle 6.6A established and tested the resolved configuration contract without
+transport. Cycle 6.6B adds the transactional executor, paired systematic
+aggregator, acceptance logic, and synthetic regression tests required before
+the 9,000-event campaign is released.
 
 ## 2. Fixed physics contract
 
@@ -65,10 +66,19 @@ Successful completion prints:
 HADRONIC_TAIL_SYSTEMATICS_PREFLIGHT=PASS points=9 runs=45 runs_per_point=5 events_per_run=200 total_events=9000 paired_seeds=5
 ```
 
-## 5. Acceptance gates for later stages
+## 5. Stage 6.6B aggregation contract
 
-Before transport is enabled, Cycle 6.6B must add transactional aggregation
-and tests for:
+The full executor first runs the same build, CTest, and 45-case preflight. It
+then writes all ROOT files, manifests, per-run CSVs, and logs under a temporary
+sibling directory. The requested output directory is published atomically
+only after all runs and the aggregation pass. Existing output directories are
+never overwritten.
+
+Each ROOT input is hashed before analysis. The analyzer is run twice and both
+CSV products must be byte-identical; the ROOT hash must remain unchanged. The
+manifest records eta, production cut, paired seed, Git commit, and ROOT SHA-256.
+
+The aggregator requires:
 
 - exact point, run, event, eta, cut, and paired-seed coverage;
 - provenance and SHA-256 integrity of every ROOT input;
@@ -78,6 +88,27 @@ and tests for:
   the 1 mm baseline, including confidence intervals across the five seeds;
 - explicit review markers whose thresholds do not silently convert a
   systematic sensitivity into a physics failure.
+
+Across the five paired seeds, two-sided 95% confidence intervals use Student's
+`t` distribution with four degrees of freedom. A TileCal3 or TileExt interval
+that excludes zero sets `systematic_review=REQUIRED`; it does not fail the
+campaign. Likewise, an energy-mean relative CI95 half-width above 3% sets a
+precision review marker instead of redefining detector acceptance.
+
+The final aggregate products are:
+
+- `systematic_summary.csv`: nine point-level energy and tail observables;
+- `paired_differences.csv`: eight comparisons with the fixed baseline;
+- `systematic_validation.txt`: structural PASS gates and review markers;
+- `campaign_manifest.tsv`: immutable run-level provenance and ROOT hashes.
+
+Transport is enabled by omitting `--dry-run` only after the 6.6B implementation
+has been committed, pushed, and independently revalidated:
+
+```bash
+python3 -B scripts/run_hadronic_tail_systematics.py \
+  --output-dir outputs/cycle6-stage66-systematics
+```
 
 ## 6. Scientific limits
 

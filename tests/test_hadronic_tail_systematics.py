@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression tests for the Cycle 6.6A systematic preflight."""
+"""Regression tests for the Cycle 6.6 systematic campaign executor."""
 
 from __future__ import annotations
 
@@ -105,9 +105,55 @@ class HadronicTailSystematicsTest(unittest.TestCase):
         )
         self.assertFalse(output_dir.exists())
 
-    def test_transport_is_blocked_in_stage_66a(self) -> None:
-        with self.assertRaisesRegex(EXECUTOR.CampaignError, "preflight-only"):
-            EXECUTOR.main([])
+    def test_full_run_dispatches_transactional_campaign(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output_dir = Path(temporary) / "campaign"
+            with (
+                mock.patch.object(EXECUTOR, "require_project_layout"),
+                mock.patch.object(EXECUTOR, "build_project") as build,
+                mock.patch.object(
+                    EXECUTOR, "git_provenance", return_value="a" * 40
+                ),
+                mock.patch.object(EXECUTOR, "execute_campaign") as execute,
+            ):
+                result = EXECUTOR.main([
+                    "--output-dir",
+                    str(output_dir),
+                    "--build-jobs",
+                    "4",
+                ])
+
+        self.assertEqual(result, 0)
+        build.assert_called_once_with(4)
+        execute.assert_called_once_with(
+            EXECUTOR.campaign_cases(), output_dir.resolve(), 4, "a" * 40
+        )
+
+    def test_existing_output_directory_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output_dir = Path(temporary) / "existing"
+            output_dir.mkdir()
+            marker = output_dir / "preserve.txt"
+            marker.write_text("preserve\n", encoding="utf-8")
+            with self.assertRaisesRegex(EXECUTOR.CampaignError, "already exists"):
+                EXECUTOR.ensure_output_absent(output_dir)
+            self.assertEqual(marker.read_text(encoding="utf-8"), "preserve\n")
+
+    def test_campaign_failure_leaves_no_output_directory(self) -> None:
+        case = EXECUTOR.campaign_cases()[0]
+        with tempfile.TemporaryDirectory() as temporary:
+            output_dir = Path(temporary) / "campaign"
+            with mock.patch.object(
+                EXECUTOR,
+                "run_case",
+                side_effect=EXECUTOR.CampaignError("synthetic transport failure"),
+            ):
+                with self.assertRaisesRegex(
+                    EXECUTOR.CampaignError, "synthetic transport failure"
+                ):
+                    EXECUTOR.execute_campaign((case,), output_dir, 2, "a" * 40)
+            self.assertFalse(output_dir.exists())
+            self.assertEqual(list(Path(temporary).iterdir()), [])
 
 
 if __name__ == "__main__":

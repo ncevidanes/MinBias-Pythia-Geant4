@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Preflight the fixed Cycle 6.6 hadronic-tail systematic matrix."""
+"""Run the fixed Cycle 6.6 paired hadronic-tail systematic campaign."""
 
 from __future__ import annotations
 
 import argparse
+import csv
+import hashlib
 import math
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,7 +22,8 @@ PROJECT_DIR = Path(__file__).resolve().parents[1]
 CONFIG_FILE = PROJECT_DIR / "config" / "single_particle.conf"
 RUN_SCRIPT = PROJECT_DIR / "run.sh"
 ANALYZER = PROJECT_DIR / "build" / "single_particle_analyzer"
-DEFAULT_OUTPUT_DIR = PROJECT_DIR / "outputs" / "cycle6-stage66a-preflight"
+AGGREGATOR = PROJECT_DIR / "scripts" / "aggregate_hadronic_tail_systematics.py"
+DEFAULT_OUTPUT_DIR = PROJECT_DIR / "outputs" / "cycle6-stage66-systematics"
 
 PARTICLE = "pion_plus"
 PDG = 211
@@ -37,7 +41,7 @@ TOTAL_EVENTS = TOTAL_RUNS * EVENTS_PER_RUN
 
 
 class CampaignError(RuntimeError):
-    """A controlled Cycle 6.6 preflight failure."""
+    """A controlled Cycle 6.6 campaign failure."""
 
 
 def number(value: float) -> str:
@@ -118,7 +122,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--output-dir",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
-        help="prospective output directory; it is not created in 6.6A",
+        help="campaign output directory (must not exist for a full run)",
     )
     parser.add_argument(
         "--build-jobs",
@@ -135,12 +139,14 @@ def require_command(name: str) -> None:
 
 
 def require_project_layout() -> None:
-    for command in ("cmake", "ctest"):
+    for command in ("cmake", "ctest", "git"):
         require_command(command)
     if not CONFIG_FILE.is_file() or CONFIG_FILE.stat().st_size == 0:
         raise CampaignError(f"missing configuration: {CONFIG_FILE}")
     if not RUN_SCRIPT.is_file() or not os.access(RUN_SCRIPT, os.X_OK):
         raise CampaignError(f"run.sh is not executable: {RUN_SCRIPT}")
+    if not AGGREGATOR.is_file() or AGGREGATOR.stat().st_size == 0:
+        raise CampaignError(f"missing systematic aggregator: {AGGREGATOR}")
 
 
 def run_checked(
@@ -164,6 +170,37 @@ def run_checked(
             diagnostic += f"\n{result.stdout.rstrip()}"
         raise CampaignError(diagnostic)
     return result.stdout or ""
+
+
+def run_and_tee(
+    command: Sequence[str | Path],
+    log_path: Path,
+    *,
+    environment: dict[str, str] | None = None,
+) -> str:
+    with log_path.open("w", encoding="utf-8", newline="\n") as log_stream:
+        process = subprocess.Popen(
+            [str(item) for item in command],
+            cwd=PROJECT_DIR,
+            env=environment,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        assert process.stdout is not None
+        chunks: list[str] = []
+        for line in process.stdout:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            log_stream.write(line)
+            log_stream.flush()
+            chunks.append(line)
+        return_code = process.wait()
+    if return_code != 0:
+        raise CampaignError(
+            f"command failed with exit {return_code}: {command[0]} (see {log_path})"
+        )
+    return "".join(chunks)
 
 
 def build_project(build_jobs: int) -> None:
@@ -236,28 +273,362 @@ def preflight_case(case: Case, output_dir: Path, build_jobs: int) -> None:
     )
 
 
+def git_provenance() -> str:
+    run_checked(("git", "rev-parse", "--is-inside-work-tree"), capture=True)
+    run_checked(("git", "diff", "--quiet"))
+    run_checked(("git", "diff", "--cached", "--quiet"))
+    commit = run_checked(("git", "rev-parse", "HEAD"), capture=True).strip()
+    if len(commit) != 40 or any(
+        character not in "0123456789abcdef" for character in commit
+    ):
+        raise CampaignError("invalid Git commit returned by git rev-parse")
+    return commit
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def read_one_csv_row(path: Path) -> dict[str, str]:
+    with path.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    if len(rows) != 1:
+        raise CampaignError(f"expected exactly one data row in {path}")
+    return rows[0]
+
+
+def finite(value: str, field: str, path: Path) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as error:
+        raise CampaignError(f"non-numeric {field} in {path}") from error
+    if not math.isfinite(parsed):
+        raise CampaignError(f"non-finite {field} in {path}")
+    return parsed
+
+
+def validate_case_outputs(
+    case: Case,
+    summary_path: Path,
+    sampling_path: Path,
+    git_commit: str,
+) -> None:
+    summary = read_one_csv_row(summary_path)
+    if int(summary["schema_version"]) != 2:
+        raise CampaignError(f"unexpected schema in {summary_path}")
+    if summary["git_commit"] != git_commit:
+        raise CampaignError(f"Git provenance mismatch in {summary_path}")
+    if summary["generator_mode"] != "single_particle":
+        raise CampaignError(f"unexpected generator mode in {summary_path}")
+    if int(summary["single_particle_pdg"]) != PDG:
+        raise CampaignError(f"PDG mismatch in {summary_path}")
+    expected_values = (
+        ("single_particle_kinetic_energy_gev", KINETIC_ENERGY_GEV),
+        ("single_particle_eta", case.eta),
+        ("single_particle_phi", PHI),
+        ("production_cut_mm", case.production_cut_mm),
+    )
+    for field, expected in expected_values:
+        if not math.isclose(
+            finite(summary[field], field, summary_path),
+            expected,
+            rel_tol=0.0,
+            abs_tol=1.0e-12,
+        ):
+            raise CampaignError(f"{field} mismatch in {summary_path}")
+    if int(summary["event_count"]) != EVENTS_PER_RUN:
+        raise CampaignError(f"event count mismatch in {summary_path}")
+    if int(summary["hit_count"]) <= 0:
+        raise CampaignError(f"hit count must be positive in {summary_path}")
+    for field in (
+        "mean_energy_mev",
+        "sample_stddev_energy_mev",
+        "mean_response",
+        "relative_resolution",
+        "sampling_centroid",
+        "sampling_width",
+        "eta_width",
+        "phi_width",
+    ):
+        if finite(summary[field], field, summary_path) < 0.0:
+            raise CampaignError(f"negative {field} in {summary_path}")
+    if finite(summary["mean_energy_mev"], "mean energy", summary_path) <= 0.0:
+        raise CampaignError(f"mean energy must be positive in {summary_path}")
+    if finite(summary["mean_response"], "response", summary_path) <= 0.0:
+        raise CampaignError(f"response must be positive in {summary_path}")
+
+    with sampling_path.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    if len(rows) != 10:
+        raise CampaignError(f"expected ten sampling rows in {sampling_path}")
+    sampling_names = (
+        "PSB",
+        "EMB1",
+        "EMB2",
+        "EMB3",
+        "TileCal1",
+        "TileCal2",
+        "TileCal3",
+        "TileExt1",
+        "TileExt2",
+        "TileExt3",
+    )
+    fractions: list[float] = []
+    sampling_means: list[float] = []
+    for index, (row, expected_name) in enumerate(zip(rows, sampling_names)):
+        if int(row["sampling"]) != index or row["name"] != expected_name:
+            raise CampaignError(f"unexpected sampling row {index} in {sampling_path}")
+        for field in (
+            "mean_energy_mev",
+            "sample_stddev_energy_mev",
+            "total_energy_fraction",
+            "eta_width",
+            "phi_width",
+        ):
+            if finite(row[field], field, sampling_path) < 0.0:
+                raise CampaignError(f"negative {field} in {sampling_path}")
+        sampling_means.append(finite(row["mean_energy_mev"], "mean", sampling_path))
+        fractions.append(
+            finite(row["total_energy_fraction"], "fraction", sampling_path)
+        )
+    if not math.isclose(
+        math.fsum(sampling_means),
+        finite(summary["mean_energy_mev"], "mean energy", summary_path),
+        rel_tol=1.0e-9,
+        abs_tol=1.0e-9,
+    ):
+        raise CampaignError(f"sampling mean closure failed in {sampling_path}")
+    if not math.isclose(
+        math.fsum(fractions), 1.0, rel_tol=1.0e-9, abs_tol=1.0e-9
+    ):
+        raise CampaignError(f"sampling fraction closure failed in {sampling_path}")
+
+
+def compare_files(first: Path, second: Path, description: str) -> None:
+    if first.read_bytes() != second.read_bytes():
+        raise CampaignError(f"non-deterministic {description}: {first.name}")
+
+
+def expected_case_paths(output_dir: Path, case: Case) -> tuple[Path, ...]:
+    base = output_dir / case.name
+    return tuple(
+        Path(f"{base}.{suffix}")
+        for suffix in (
+            "root",
+            "root.manifest.txt",
+            "summary.csv",
+            "samplings.csv",
+            "simulation.log",
+            "analysis.log",
+        )
+    )
+
+
+def run_case(
+    case: Case,
+    output_dir: Path,
+    reanalysis_dir: Path,
+    build_jobs: int,
+    git_commit: str,
+) -> dict[str, object]:
+    (
+        root_file,
+        root_manifest,
+        summary_file,
+        sampling_file,
+        simulation_log,
+        analysis_log,
+    ) = expected_case_paths(output_dir, case)
+    repeated_summary = reanalysis_dir / f"{case.name}.summary.csv"
+    repeated_sampling = reanalysis_dir / f"{case.name}.samplings.csv"
+    repeated_log = reanalysis_dir / f"{case.name}.analysis.log"
+    environment = os.environ.copy()
+    environment["BUILD_JOBS"] = str(build_jobs)
+
+    print(f"HADRONIC_TAIL_CAMPAIGN_CASE=START run={case.name}")
+    run_and_tee(
+        (RUN_SCRIPT, CONFIG_FILE, *run_arguments(case, root_file)),
+        simulation_log,
+        environment=environment,
+    )
+    if not root_file.is_file() or root_file.stat().st_size == 0:
+        raise CampaignError(f"ROOT is absent or empty: {root_file}")
+    if not root_manifest.is_file() or root_manifest.stat().st_size == 0:
+        raise CampaignError(f"ROOT manifest is absent or empty: {root_manifest}")
+    root_hash_before = sha256(root_file)
+
+    analysis_output = run_and_tee(
+        (
+            ANALYZER,
+            "--input",
+            root_file,
+            "--summary-csv",
+            summary_file,
+            "--sampling-csv",
+            sampling_file,
+        ),
+        analysis_log,
+    )
+    if "ANALYSIS_RESULT=PASS" not in analysis_output.splitlines():
+        raise CampaignError(f"analysis did not pass: {case.name}")
+    repeated_output = run_and_tee(
+        (
+            ANALYZER,
+            "--input",
+            root_file,
+            "--summary-csv",
+            repeated_summary,
+            "--sampling-csv",
+            repeated_sampling,
+        ),
+        repeated_log,
+    )
+    if "ANALYSIS_RESULT=PASS" not in repeated_output.splitlines():
+        raise CampaignError(f"repeated analysis did not pass: {case.name}")
+    compare_files(summary_file, repeated_summary, "summary CSV")
+    compare_files(sampling_file, repeated_sampling, "sampling CSV")
+    if sha256(root_file) != root_hash_before:
+        raise CampaignError(f"analyzer modified the ROOT file: {case.name}")
+    validate_case_outputs(case, summary_file, sampling_file, git_commit)
+
+    print(
+        "HADRONIC_TAIL_CAMPAIGN_CASE=PASS "
+        f"run={case.name} root_sha256={root_hash_before}"
+    )
+    return {
+        "run": case.name,
+        "particle": PARTICLE,
+        "pdg": PDG,
+        "kinetic_energy_gev": KINETIC_ENERGY_GEV,
+        "eta": case.eta,
+        "production_cut_mm": case.production_cut_mm,
+        "events": EVENTS_PER_RUN,
+        "seed": case.seed,
+        "root_sha256": root_hash_before,
+        "git_commit": git_commit,
+    }
+
+
+def ensure_output_absent(output_dir: Path) -> None:
+    if output_dir.exists():
+        raise CampaignError(
+            f"output directory already exists; preserve it and choose another: {output_dir}"
+        )
+
+
+def execute_campaign(
+    cases: Sequence[Case], output_dir: Path, build_jobs: int, git_commit: str
+) -> None:
+    ensure_output_absent(output_dir)
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    staging_dir = Path(
+        tempfile.mkdtemp(prefix=f".{output_dir.name}.stage-", dir=output_dir.parent)
+    )
+    try:
+        reanalysis_dir = staging_dir / ".reanalysis"
+        reanalysis_dir.mkdir()
+        manifest_path = staging_dir / "campaign_manifest.tsv"
+        summary_path = staging_dir / "systematic_summary.csv"
+        paired_path = staging_dir / "paired_differences.csv"
+        validation_path = staging_dir / "systematic_validation.txt"
+        aggregation_log = staging_dir / "systematic_aggregation.log"
+
+        manifest_rows = [
+            run_case(case, staging_dir, reanalysis_dir, build_jobs, git_commit)
+            for case in cases
+        ]
+        with manifest_path.open("w", newline="", encoding="utf-8") as stream:
+            writer = csv.DictWriter(
+                stream,
+                fieldnames=(
+                    "run",
+                    "particle",
+                    "pdg",
+                    "kinetic_energy_gev",
+                    "eta",
+                    "production_cut_mm",
+                    "events",
+                    "seed",
+                    "root_sha256",
+                    "git_commit",
+                ),
+                delimiter="\t",
+                lineterminator="\n",
+            )
+            writer.writeheader()
+            writer.writerows(manifest_rows)
+
+        aggregation_output = run_and_tee(
+            (
+                sys.executable,
+                "-B",
+                AGGREGATOR,
+                "--manifest",
+                manifest_path,
+                "--input-dir",
+                staging_dir,
+                "--summary-csv",
+                summary_path,
+                "--paired-csv",
+                paired_path,
+                "--validation",
+                validation_path,
+                "--runs-per-point",
+                str(RUNS_PER_POINT),
+                "--events-per-run",
+                str(EVENTS_PER_RUN),
+                "--precision-review-threshold",
+                "0.03",
+            ),
+            aggregation_log,
+        )
+        if not any(
+            line.startswith("HADRONIC_TAIL_AGGREGATION_RESULT=PASS")
+            for line in aggregation_output.splitlines()
+        ):
+            raise CampaignError("hadronic-tail aggregation did not pass")
+        shutil.rmtree(reanalysis_dir)
+        os.replace(staging_dir, output_dir)
+    finally:
+        shutil.rmtree(staging_dir, ignore_errors=True)
+
+    print(
+        "HADRONIC_TAIL_SYSTEMATICS_RESULT=PASS "
+        f"points={TOTAL_POINTS} runs={TOTAL_RUNS} events={TOTAL_EVENTS} "
+        f"paired_seeds={len(SEEDS)}"
+    )
+    print(f"HADRONIC_TAIL_SYSTEMATICS_OUTPUT_DIR={output_dir}")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    if not args.dry_run:
-        raise CampaignError(
-            "Cycle 6.6A is preflight-only; pass --dry-run and do not transport yet"
-        )
     cases = campaign_cases()
     output_dir = resolved_output_dir(args.output_dir)
     require_project_layout()
     build_project(args.build_jobs)
-    for case in cases:
-        preflight_case(case, output_dir, args.build_jobs)
-    if output_dir.exists():
-        raise CampaignError(
-            f"dry-run unexpectedly created output directory: {output_dir}"
+
+    if args.dry_run:
+        ensure_output_absent(output_dir)
+        for case in cases:
+            preflight_case(case, output_dir, args.build_jobs)
+        if output_dir.exists():
+            raise CampaignError(
+                f"dry-run unexpectedly created output directory: {output_dir}"
+            )
+        print(
+            "HADRONIC_TAIL_SYSTEMATICS_PREFLIGHT=PASS "
+            f"points={TOTAL_POINTS} runs={TOTAL_RUNS} "
+            f"runs_per_point={RUNS_PER_POINT} events_per_run={EVENTS_PER_RUN} "
+            f"total_events={TOTAL_EVENTS} paired_seeds={len(SEEDS)}"
         )
-    print(
-        "HADRONIC_TAIL_SYSTEMATICS_PREFLIGHT=PASS "
-        f"points={TOTAL_POINTS} runs={TOTAL_RUNS} "
-        f"runs_per_point={RUNS_PER_POINT} events_per_run={EVENTS_PER_RUN} "
-        f"total_events={TOTAL_EVENTS} paired_seeds={len(SEEDS)}"
-    )
+        return 0
+
+    git_commit = git_provenance()
+    execute_campaign(cases, output_dir, args.build_jobs, git_commit)
     return 0
 
 
