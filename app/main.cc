@@ -30,6 +30,7 @@ void PrintUsage(const char* executable) {
       << "  --seed N\n"
       << "  --output ARQUIVO.root\n"
       << "  --physics-list NOME\n"
+      << "  --production-cut-mm VALOR\n"
       << "  --generator-mode pythia|single_particle\n"
       << "  --particle-pdg PDG\n"
       << "  --particle-kinetic-energy-gev VALOR\n"
@@ -67,6 +68,7 @@ int main(int argc, char** argv) {
                  argument == "--threads" || argument == "--seed" ||
                  argument == "--output" ||
                  argument == "--physics-list" ||
+                 argument == "--production-cut-mm" ||
                  argument == "--generator-mode" ||
                  argument == "--particle-pdg" ||
                  argument == "--particle-kinetic-energy-gev" ||
@@ -112,6 +114,9 @@ int main(int argc, char** argv) {
       } else if (argument == "--physics-list") {
         configuration.physicsList =
             RequireValue(index, argc, argv, argument);
+      } else if (argument == "--production-cut-mm") {
+        configuration.productionCutMm =
+            std::stod(RequireValue(index, argc, argv, argument));
       } else if (argument == "--generator-mode") {
         configuration.generatorMode =
             RequireValue(index, argc, argv, argument);
