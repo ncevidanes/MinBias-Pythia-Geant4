@@ -216,6 +216,17 @@ cauda externa no ciclo seguinte. Consulte o
 [`relatório do Ciclo 6.5`](docs/cycle-6.5-longitudinal-containment/analysis-report.md)
 para resultados, hashes, critérios e limites científicos.
 
+O Ciclo 6.6 investigou esse marcador com píons positivos de 100 GeV, cinco
+sementes pareadas, eta 0.0, 0.4 e 0.8 e cortes de produção 0.1, 1.0 e 10.0 mm.
+As 45 execuções e 9.000 eventos mostram que a variação do corte não explica a
+cauda em TileCal3. Em eta 0.8, a redução de TileCal3 acompanha o aumento de
+TileExt, caracterizando migração entre regiões na transição da geometria
+simplificada, não crescimento da fração externa combinada. Sete pontos mantêm
+um marcador de revisão de precisão da energia média, com pior meia-largura
+relativa do IC95 de 4,275269%; ele é documentado e não invalida a comparação
+pareada das frações. Consulte o
+[`relatório do Ciclo 6.6`](docs/cycle-6.6-hadronic-tail-systematics/analysis-report.md).
+
 ## Reprodutibilidade
 
 O mestre do Geant4 e cada trabalhador do PYTHIA recebem sementes derivadas de

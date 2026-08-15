@@ -42,6 +42,7 @@ struct Metadata {
   double kineticEnergyGeV = 0.0;
   double eta = 0.0;
   double phi = 0.0;
+  double productionCutMm = 0.0;
 };
 
 std::string Usage() {
@@ -205,6 +206,8 @@ Metadata ReadMetadata(TTree& tree) {
       tree, "single_particle_eta", "Double_t");
   auto& phiLeaf = RequireLeaf(
       tree, "single_particle_phi", "Double_t");
+  auto& productionCutLeaf = RequireLeaf(
+      tree, "production_cut_mm", "Double_t");
 
   if (tree.GetEntry(0) < 0) {
     throw std::runtime_error("Unable to read metadata entry");
@@ -221,6 +224,7 @@ Metadata ReadMetadata(TTree& tree) {
   metadata.kineticEnergyGeV = energyLeaf.GetValue();
   metadata.eta = etaLeaf.GetValue();
   metadata.phi = phiLeaf.GetValue();
+  metadata.productionCutMm = productionCutLeaf.GetValue();
 
   if (metadata.schemaVersion != kExpectedSchemaVersion) {
     throw std::runtime_error(
@@ -237,7 +241,9 @@ Metadata ReadMetadata(TTree& tree) {
   if (!std::isfinite(metadata.kineticEnergyGeV) ||
       metadata.kineticEnergyGeV <= 0.0 ||
       !std::isfinite(metadata.eta) ||
-      !std::isfinite(metadata.phi)) {
+      !std::isfinite(metadata.phi) ||
+      !std::isfinite(metadata.productionCutMm) ||
+      metadata.productionCutMm <= 0.0) {
     throw std::runtime_error(
         "Incident particle metadata contains invalid values");
   }
@@ -344,6 +350,7 @@ void WriteSummaryCsv(
       << "single_particle_pdg,"
       << "single_particle_kinetic_energy_gev,"
       << "single_particle_eta,single_particle_phi,"
+      << "production_cut_mm,"
       << "event_count,hit_count,mean_energy_mev,"
       << "sample_stddev_energy_mev,mean_response,"
       << "relative_resolution,sampling_centroid,"
@@ -357,6 +364,7 @@ void WriteSummaryCsv(
       << metadata.kineticEnergyGeV << ','
       << metadata.eta << ','
       << metadata.phi << ','
+      << metadata.productionCutMm << ','
       << summary.eventCount << ','
       << summary.hitCount << ','
       << summary.meanEnergyMeV << ','

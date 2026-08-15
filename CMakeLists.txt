@@ -339,6 +339,18 @@ if(BUILD_TESTING)
     COMMAND "${Python3_EXECUTABLE}" -B
       "${PROJECT_SOURCE_DIR}/tests/test_longitudinal_containment.py"
   )
+
+  add_test(
+    NAME hadronic_tail_systematics
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_hadronic_tail_systematics.py"
+  )
+
+  add_test(
+    NAME hadronic_tail_aggregator
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_hadronic_tail_aggregator.py"
+  )
 endif()
 
 install(TARGETS pythia_geant RUNTIME DESTINATION bin)

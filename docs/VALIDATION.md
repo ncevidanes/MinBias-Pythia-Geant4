@@ -37,7 +37,9 @@ Devem estar registrados e aprovados:
 - `single_particle_analysis`;
 - `statistical_aggregator`;
 - `statistical_campaign_executor`;
-- `longitudinal_containment`.
+- `longitudinal_containment`;
+- `hadronic_tail_systematics`;
+- `hadronic_tail_aggregator`.
 
 O teste `seed_policy` cobre normalização, limites, sementes por trabalhador,
 wrap-around e ausência de colisões no intervalo exercitado pelo teste.
@@ -166,6 +168,43 @@ fora da geometria.
 Os resultados aprovados, o manifesto SHA-256 e os limites científicos estão
 em `docs/cycle-6.4-statistical-validation/campaign-report.md` e
 `docs/cycle-6.5-longitudinal-containment/analysis-report.md`.
+
+### 4.4 Sistemática da cauda hadrônica
+
+O Ciclo 6.6 fixa píons positivos de 100 GeV, phi zero, uma thread, 200 eventos
+por execução e as mesmas cinco sementes em todos os pontos. A matriz combina
+eta 0.0, 0.4 e 0.8 com cortes de produção 0.1, 1.0 e 10.0 mm. Antes do
+transporte, valide as 45 configurações sem criar o diretório de saída:
+
+```bash
+python3 -B scripts/run_hadronic_tail_systematics.py \
+  --dry-run \
+  --output-dir outputs/cycle6-stage66-preflight
+```
+
+Na execução completa, o diretório final é publicado somente depois da análise
+duplicada de cada ROOT e da agregação. Devem ser satisfeitos:
+
+- nove pontos, 45 execuções e 9.000 eventos;
+- as sementes 643031 a 643035 presentes em todos os pontos;
+- identidade byte a byte das duas análises de cada ROOT;
+- integridade SHA-256 de todos os ROOTs antes e depois da análise;
+- fechamento das dez frações de sampling dentro de `1e-9`;
+- oito comparações pareadas contra eta zero e corte de 1 mm;
+- intervalos bilaterais de 95% pela distribuição t pareada com quatro graus
+  de liberdade.
+
+Uma meia-largura relativa do IC95 da energia média acima de 3% produz
+`precision_review=REQUIRED`. Um intervalo pareado de TileCal3 ou TileExt que
+exclua zero produz `systematic_review=REQUIRED`. Esses marcadores exigem
+interpretação explícita e não reprovam isoladamente a campanha.
+
+No resultado versionado, o pior marcador de precisão foi 4,275269%. A
+produção-cut não produziu alteração significativa de TileCal3 em eta zero. Em
+eta 0.8, TileCal3 diminuiu enquanto TileExt aumentou nos três cortes, mas a
+soma das duas regiões permaneceu abaixo do baseline. O resultado é interpretado
+como migração geométrica regional, não como aumento global do vazamento. Veja
+`docs/cycle-6.6-hadronic-tail-systematics/analysis-report.md`.
 
 ## 5. Geometria
 
