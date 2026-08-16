@@ -114,3 +114,43 @@ INTEGRATED_MINBIAS_PREFLIGHT=PASS stages=3 bunch_crossings=3503 expected_interac
 
 Only after this marker and the Stage 7.0A tests pass may Stage 7.0B implement
 the transactional executor and integrated ROOT analyzer.
+
+## 8. Stage 7.0B executor and analyzer
+
+The Stage 7.0B executor owns one stage at a time. Before transport it rebuilds
+the project, runs the complete CTest suite, applies the Stage 7.0A contract,
+and invokes the simulator's own dry-run for all three fixed stages. This
+preflight is available without transport:
+
+```bash
+BUILD_JOBS=1 python3 -B scripts/run_integrated_minbias_campaign.py \
+  --dry-run --output-dir outputs/cycle7-integrated-minbias
+```
+
+It must leave the prospective output directory absent and end with:
+
+```text
+INTEGRATED_MINBIAS_EXECUTOR_PREFLIGHT=PASS stages=3 bunch_crossings=3503 expected_interactions=151003 transport_executed=NO
+```
+
+Transport requires an explicit `--stage`. For example, the future Stage 7.1
+smoke execution is:
+
+```bash
+BUILD_JOBS=1 python3 -B scripts/run_integrated_minbias_campaign.py \
+  --stage 7.1 --output-dir outputs/cycle7-stage71-smoke
+```
+
+The executor rejects an existing destination, requires a clean tracked
+worktree, captures `/usr/bin/time -v`, runs the canonical structural ROOT
+audit, and verifies that neither audit nor analysis changed the ROOT SHA-256.
+The integrated analyzer then produces one campaign summary, ten ordered
+sampling rows, and machine-readable validation markers. Stage 7.1 treats
+sampling coverage and Poisson consistency as structural/not applicable;
+Stages 7.2 and 7.3 require all ten samplings and a total requested-interaction
+count within five Poisson standard deviations of the fixed expectation.
+
+ROOT data, logs, resource usage, analysis products, manifest, and checksum are
+assembled in a temporary sibling directory. A single atomic rename publishes
+the final directory only after every gate passes; controlled failures remove
+the temporary directory and never publish a partial result.

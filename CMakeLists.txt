@@ -357,6 +357,12 @@ if(BUILD_TESTING)
     COMMAND "${Python3_EXECUTABLE}" -B
       "${PROJECT_SOURCE_DIR}/tests/test_integrated_minbias_preflight.py"
   )
+
+  add_test(
+    NAME integrated_minbias_executor
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_integrated_minbias_executor.py"
+  )
 endif()
 
 install(TARGETS pythia_geant RUNTIME DESTINATION bin)
