@@ -1,0 +1,4 @@
+stage	name	bunch_crossings	mean_interactions	seed	threads	git_commit	root_file	root_sha256
+7.1	smoke	3	1	512	1	6f248fe375b7609cffbdb0f0d3ecb8588efed503	stage71-smoke.root	43c9614856c01381618aa26e59ffb32eda2fc13ca810c5f77fae08973feaed76
+7.2	statistical	500	2	513	1	6f248fe375b7609cffbdb0f0d3ecb8588efed503	stage72-statistical.root	d7866eab619f078d7c1c31ee6ef5da7b3f9584f5c00b1accf4211add3178f3b9
+7.3	production	3000	50	512	1	6f248fe375b7609cffbdb0f0d3ecb8588efed503	stage73-production.root	6865fcc8adf97d25858832fb15ed5e48db6d87a4031ad0b143a4b94872574630
