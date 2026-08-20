@@ -369,6 +369,12 @@ if(BUILD_TESTING)
     COMMAND "${Python3_EXECUTABLE}" -B
       "${PROJECT_SOURCE_DIR}/tests/test_neutrino_transport_preflight.py"
   )
+
+  add_test(
+    NAME neutrino_transport_executor
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_neutrino_transport_executor.py"
+  )
 endif()
 
 install(TARGETS pythia_geant RUNTIME DESTINATION bin)

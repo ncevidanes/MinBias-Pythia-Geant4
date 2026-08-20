@@ -144,3 +144,55 @@ sample. Its event count, seeds, stopping rule, primary metrics, and thresholds
 must be fixed in a new committed contract before examining those production
 results. This prevents an observed pilot fluctuation from being promoted into
 an unplanned statistical claim.
+
+## 9. Stage 8.0C executor and paired analyzer
+
+The Stage 8.0C executor owns the complete pilot as one transaction. Its only
+execution modes are `--dry-run` and the explicit `--execute-pilot` gate. A
+transport request cannot select only one member of the OFF/ON pair.
+
+Before transport, the executor rebuilds with controlled parallelism, runs the
+complete CTest suite, invokes the Stage 8.0B contract preflight, and performs a
+simulator dry-run for all three configurations. Successful dry-run completion
+ends with:
+
+```text
+NEUTRINO_TRANSPORT_EXECUTOR_PREFLIGHT=PASS runs=3 bunch_crossings=203 paired_bunch_crossings=200 transport_executed=NO
+```
+
+During an authorized pilot, the executor:
+
+- requires a clean tracked worktree and records the full Git commit;
+- executes smoke ON, paired OFF, and paired ON sequentially with one thread;
+- measures each run with `/usr/bin/time -v`;
+- applies the canonical structural ROOT audit without modifying the files;
+- verifies each ROOT SHA-256 before and after analysis;
+- invokes `analyze_neutrino_transport.C` on the complete OFF/ON pair;
+- validates the generated summary, per-event table, and gate markers;
+- writes a manifest and artifact checksums;
+- publishes the campaign through one atomic rename only after every gate
+  passes and removes incomplete staging data after controlled failure.
+
+The paired analyzer compares metadata, event accounting, the complete generator
+record, particle decisions, hit identities, and energy deposits. It emits:
+
+- `paired_summary.csv`, with aggregate eligibility, transported-particle,
+  energy, hit, and cell-difference metrics;
+- `paired_events.csv`, with exactly one row for each event `0..99`;
+- `paired_validation.txt`, with the computational acceptance markers.
+
+At least one eligible neutrino is required in the fixed pilot. The exact
+identity of non-neutrino generator particles and decisions must be preserved,
+and the ON-minus-OFF transported-particle count must equal the eligible-neutrino
+count globally and event by event.
+
+Because the OFF classifier records final neutrinos before applying the eta
+gate, final neutrinos outside acceptance migrate from
+`kNeutrinoDisabled = 2` in OFF to `kOutsideEtaAcceptance = 4` in ON. The
+analyzer counts this migration separately as `outside_acceptance_neutrinos`;
+it is not included in the transported-particle delta.
+
+Energy and hit differences are measured but not prejudged. The analyzer reports
+their signed, absolute, relative, missing-cell, changed-cell, L1, and maximum
+metrics under the marker `REPORTED_NOT_ASSUMED`. Interpretation follows only
+after the computational pairing and accounting gates pass.
