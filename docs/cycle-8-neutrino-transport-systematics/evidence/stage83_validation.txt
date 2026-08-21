@@ -1,0 +1,10 @@
+NEUTRINO_TRANSPORT_STAGE83_ANALYSIS_RESULT=PASS
+fixed_matrix=PASS
+seed_pairing=PASS
+event_pairing=PASS
+generator_pairing=PASS
+particle_accounting=PASS
+eligible_neutrinos=80
+outside_acceptance_neutrinos=142
+eligible_sample_classification=DESCRIPTIVE
+energy_difference_classification=REPORTED_NOT_ASSUMED

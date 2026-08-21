@@ -1,0 +1,4 @@
+events,seed,mean_interactions,eligible_neutrinos,outside_acceptance_neutrinos,off_transported,on_transported,transported_delta,off_total_energy_mev,on_total_energy_mev,energy_delta_mev,energy_abs_delta_mev,energy_relative_delta,off_hit_count,on_hit_count,changed_hit_cells,missing_off_hit_cells,missing_on_hit_cells,hit_energy_l1_mev,max_abs_hit_delta_mev,generator_entries,requested_interactions,generated_interactions,generation_failures,unknown_pdg_particles,unlineaged_steps,segmentation_failures
+1000,1512,1,25,41,59012,59037,25,7217705.9765716046,7217705.9765716046,0,0,0,4276647,4276647,0,0,0,0,0,593084,1023,1023,0,0,0,0
+1000,2512,1,26,44,55791,55817,26,6718165.2980657462,6718165.2980657462,0,0,0,3964126,3964126,0,0,0,0,0,560454,979,979,0,0,0,0
+1000,3512,1,29,57,56925,56954,29,6954950.8854959467,6954950.8854959467,0,0,0,4147644,4147644,0,0,0,0,0,578581,1032,1032,0,0,0,0
