@@ -138,12 +138,15 @@ MetadataRecord ReadMetadata(TTree& tree, AnalysisResult& result) {
 
 void ValidateMetadataPair(const MetadataRecord& off,
                           const MetadataRecord& on,
+                          const int expectedEvents,
+                          const int expectedSeed,
                           AnalysisResult& result) {
   for (const auto* record : {&off, &on}) {
-    result.Check(record->events == 100, "metadata event count mismatch");
+    result.Check(record->events == expectedEvents,
+                 "metadata event count mismatch");
     result.Check(record->firstBcid == 0, "metadata first BCID mismatch");
     result.Check(record->threads == 1, "metadata thread count mismatch");
-    result.Check(record->seed == 512, "metadata seed mismatch");
+    result.Check(record->seed == expectedSeed, "metadata seed mismatch");
     result.Check(record->generatorAudit == 1,
                  "generator audit must be enabled");
     result.Check(record->checkOverlaps == 1,
@@ -474,8 +477,13 @@ HitComparison CompareHits(const HitData& off, const HitData& on,
 
 void analyze_neutrino_transport(const char* offFilename,
                                 const char* onFilename,
-                                const char* outputDirectory) {
+                                const char* outputDirectory,
+                                const int expectedEvents = 100,
+                                const int expectedSeed = 512,
+                                const bool requirePositiveEligible = true) {
   AnalysisResult result;
+  result.Check(expectedEvents > 0, "expected event count must be positive");
+  result.Check(expectedSeed > 0, "expected seed must be positive");
   const std::filesystem::path finalDirectory(outputDirectory);
   const std::filesystem::path temporaryDirectory =
       finalDirectory.string() + ".tmp";
@@ -514,7 +522,7 @@ void analyze_neutrino_transport(const char* offFilename,
 
   const MetadataRecord offMeta = ReadMetadata(*offMetadata, result);
   const MetadataRecord onMeta = ReadMetadata(*onMetadata, result);
-  ValidateMetadataPair(offMeta, onMeta, result);
+  ValidateMetadataPair(offMeta, onMeta, expectedEvents, expectedSeed, result);
   const auto offEvents = ReadEvents(*offEventsTree, result, "OFF");
   const auto onEvents = ReadEvents(*onEventsTree, result, "ON");
   const auto offGenerator = ReadGenerator(*offGeneratorTree, result, "OFF");
@@ -522,8 +530,9 @@ void analyze_neutrino_transport(const char* offFilename,
   const HitData offHits = ReadHits(*offHitsTree, result, "OFF");
   const HitData onHits = ReadHits(*onHitsTree, result, "ON");
 
-  result.Check(offEvents.size() == 100 && onEvents.size() == 100,
-               "paired event trees must each contain 100 events");
+  result.Check(offEvents.size() == static_cast<std::size_t>(expectedEvents) &&
+                   onEvents.size() == static_cast<std::size_t>(expectedEvents),
+               "paired event trees have an unexpected event count");
   result.Check(offGenerator.size() == onGenerator.size(),
                "paired generator entry counts differ");
 
@@ -566,15 +575,23 @@ void analyze_neutrino_transport(const char* offFilename,
                    "non-neutrino generator decision changed");
     }
   }
-  result.Check(eligibleNeutrinos > 0,
-               "eligible neutrino count must be positive");
+  if (requirePositiveEligible) {
+    result.Check(eligibleNeutrinos > 0,
+                 "eligible neutrino count must be positive");
+  }
 
   long long offTransportedTotal = 0;
   long long onTransportedTotal = 0;
+  long long requestedInteractionsTotal = 0;
+  long long generatedInteractionsTotal = 0;
+  long long generationFailuresTotal = 0;
+  long long unknownPdgParticlesTotal = 0;
+  long long unlineagedStepsTotal = 0;
+  long long segmentationFailuresTotal = 0;
   double offEnergyTotal = 0.0;
   double onEnergyTotal = 0.0;
   double eventEnergyAbsoluteDifference = 0.0;
-  for (int event = 0; event < 100; ++event) {
+  for (int event = 0; event < expectedEvents; ++event) {
     const auto offIterator = offEvents.find(event);
     const auto onIterator = onEvents.find(event);
     result.Check(offIterator != offEvents.end() && onIterator != onEvents.end(),
@@ -605,6 +622,12 @@ void analyze_neutrino_transport(const char* offFilename,
                  "transported-particle delta mismatch");
     offTransportedTotal += off.transported;
     onTransportedTotal += on.transported;
+    requestedInteractionsTotal += off.requested;
+    generatedInteractionsTotal += off.generated;
+    generationFailuresTotal += off.failures;
+    unknownPdgParticlesTotal += off.unknown;
+    unlineagedStepsTotal += off.unlineagedSteps;
+    segmentationFailuresTotal += off.segmentationFailures;
     offEnergyTotal += off.energy;
     onEnergyTotal += on.energy;
     eventEnergyAbsoluteDifference += std::abs(on.energy - off.energy);
@@ -645,8 +668,12 @@ void analyze_neutrino_transport(const char* offFilename,
                "energy_abs_delta_mev,energy_relative_delta,off_hit_count,"
                "on_hit_count,changed_hit_cells,missing_off_hit_cells,"
                "missing_on_hit_cells,hit_energy_l1_mev,"
-               "max_abs_hit_delta_mev,generator_entries\n"
-            << 100 << ',' << 512 << ',' << 1.0 << ',' << eligibleNeutrinos
+               "max_abs_hit_delta_mev,generator_entries,"
+               "requested_interactions,generated_interactions,"
+               "generation_failures,unknown_pdg_particles,"
+               "unlineaged_steps,segmentation_failures\n"
+            << expectedEvents << ',' << expectedSeed << ',' << 1.0 << ','
+            << eligibleNeutrinos
             << ',' << outsideNeutrinos << ',' << offTransportedTotal << ','
             << onTransportedTotal << ','
             << (onTransportedTotal - offTransportedTotal) << ','
@@ -656,13 +683,17 @@ void analyze_neutrino_transport(const char* offFilename,
             << ',' << hitComparison.changed << ',' << hitComparison.missingOff
             << ',' << hitComparison.missingOn << ',' << hitComparison.l1
             << ',' << hitComparison.maximum << ',' << offGenerator.size()
+            << ',' << requestedInteractionsTotal << ','
+            << generatedInteractionsTotal << ',' << generationFailuresTotal
+            << ',' << unknownPdgParticlesTotal << ',' << unlineagedStepsTotal
+            << ',' << segmentationFailuresTotal
             << '\n';
     events << std::setprecision(17)
            << "event,bcid,eligible_neutrinos,outside_acceptance_neutrinos,"
               "off_transported,on_transported,"
               "off_energy_mev,on_energy_mev,energy_delta_mev,"
               "energy_abs_delta_mev,off_hit_count,on_hit_count\n";
-    for (int event = 0; event < 100; ++event) {
+    for (int event = 0; event < expectedEvents; ++event) {
       const EventRecord& off = offEvents.at(event);
       const EventRecord& on = onEvents.at(event);
       const double delta = on.energy - off.energy;
@@ -697,7 +728,8 @@ void analyze_neutrino_transport(const char* offFilename,
     return;
   }
 
-  std::cout << "NEUTRINO_TRANSPORT_ANALYSIS_RESULT=PASS events=100"
+  std::cout << "NEUTRINO_TRANSPORT_ANALYSIS_RESULT=PASS events="
+            << expectedEvents << " seed=" << expectedSeed
             << " eligible_neutrinos=" << eligibleNeutrinos
             << " outside_acceptance_neutrinos=" << outsideNeutrinos
             << " transported_delta="

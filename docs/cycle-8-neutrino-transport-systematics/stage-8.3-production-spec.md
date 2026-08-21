@@ -34,7 +34,7 @@ because of the observed number of eligible neutrinos, a zero/nonzero energy
 difference, a hit difference, runtime, or an apparent trend. A computational
 failure aborts transactional publication; it does not redefine the sample.
 
-The campaign is computationally complete after all six fixed runs, three ROOT
+The campaign is computationally complete after all six fixed runs, six ROOT
 audits, three paired analyses, aggregate validation, and checksum publication
 pass. A zero eligible-neutrino count is a scientifically limited result, not a
 reason to alter the budget after examining data.
@@ -120,3 +120,36 @@ The contract-only preflight must end with:
 ```text
 NEUTRINO_TRANSPORT_STAGE83_PREFLIGHT=PASS runs=6 seed_pairs=3 bunch_crossings=6000 paired_bunch_crossings=3000 events_per_condition=1000 seeds=1512,2512,3512 threads=1 stopping_rule=fixed_budget transport_executed=NO
 ```
+
+## 10. Transactional executor and aggregate products
+
+The production executor exposes mutually exclusive `--dry-run` and
+`--execute-production` gates. Dry-run builds the project, runs the complete
+CTest suite, executes the contract preflight, and resolves all six simulator
+commands without transport or output creation. Production remains sequential
+and writes only to a temporary sibling of the final output directory.
+
+Each seed pair is analyzed independently with its expected event count and
+seed. Unlike the pilot-only gate, an individual production seed may contain
+zero eligible neutrinos. The aggregate then validates exactly 3,000 unique
+`(seed, event, bcid)` keys, sums accounting and energy metrics, reports resource
+usage for all six runs, applies the fixed adequacy classification, and checks
+that the total transported-particle delta equals the total eligible count.
+
+The accepted output transaction contains per-seed ROOT data, execution logs,
+ROOT audits, paired analysis products, `analysis/stage83_seed_summary.csv`,
+`analysis/stage83_events.csv`, `analysis/stage83_summary.csv`,
+`analysis/stage83_resource_summary.csv`, `analysis/stage83_validation.txt`, a
+six-row `campaign_manifest.tsv`, and `campaign_artifacts.sha256`. Publication
+uses one atomic rename after every gate passes; any failure removes the
+temporary transaction and leaves the final destination absent.
+
+The executor-only dry-run must end with:
+
+```text
+NEUTRINO_TRANSPORT_STAGE83_EXECUTOR_PREFLIGHT=PASS runs=6 seed_pairs=3 bunch_crossings=6000 paired_bunch_crossings=3000 transport_executed=NO
+```
+
+No production transport is authorized merely by implementing this executor.
+Its commit and remote head must be audited before `--execute-production` is
+invoked.
