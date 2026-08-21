@@ -230,6 +230,17 @@ class NeutrinoTransportExecutorTest(unittest.TestCase):
         ):
             self.assertIn(required, source)
 
+    def test_root_analyzer_handles_matching_nonfinite_generator_values(self) -> None:
+        source = ANALYZER_PATH.read_text(encoding="utf-8")
+        for required in (
+            "bool SameGeneratorFloatingValue",
+            "std::isnan(left) && std::isnan(right)",
+            "std::isinf(left) || std::isinf(right)",
+            "SameGeneratorFloatingValue(left.eta, right.eta)",
+            "SameGeneratorFloatingValue(left.phi, right.phi)",
+        ):
+            self.assertIn(required, source)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -39,6 +39,14 @@ bool NearlyEqual(const double left, const double right) {
   return std::abs(left - right) <= 1.0e-10 * scale;
 }
 
+bool SameGeneratorFloatingValue(const double left, const double right) {
+  if (std::isnan(left) || std::isnan(right)) {
+    return std::isnan(left) && std::isnan(right);
+  }
+  if (std::isinf(left) || std::isinf(right)) return left == right;
+  return NearlyEqual(left, right);
+}
+
 bool IsNeutrinoPdg(const int pdg) {
   const int absolute = std::abs(pdg);
   return absolute == 12 || absolute == 14 || absolute == 16 ||
@@ -331,13 +339,17 @@ bool SameGeneratorContent(const GeneratorRecord& left,
          left.daughter1 == right.daughter1 &&
          left.daughter2 == right.daughter2 &&
          left.isFinal == right.isFinal && left.isVisible == right.isVisible &&
-         NearlyEqual(left.px, right.px) && NearlyEqual(left.py, right.py) &&
-         NearlyEqual(left.pz, right.pz) &&
-         NearlyEqual(left.energy, right.energy) &&
-         NearlyEqual(left.mass, right.mass) &&
-         NearlyEqual(left.eta, right.eta) && NearlyEqual(left.phi, right.phi) &&
-         NearlyEqual(left.x, right.x) && NearlyEqual(left.y, right.y) &&
-         NearlyEqual(left.z, right.z) && NearlyEqual(left.t, right.t);
+         SameGeneratorFloatingValue(left.px, right.px) &&
+         SameGeneratorFloatingValue(left.py, right.py) &&
+         SameGeneratorFloatingValue(left.pz, right.pz) &&
+         SameGeneratorFloatingValue(left.energy, right.energy) &&
+         SameGeneratorFloatingValue(left.mass, right.mass) &&
+         SameGeneratorFloatingValue(left.eta, right.eta) &&
+         SameGeneratorFloatingValue(left.phi, right.phi) &&
+         SameGeneratorFloatingValue(left.x, right.x) &&
+         SameGeneratorFloatingValue(left.y, right.y) &&
+         SameGeneratorFloatingValue(left.z, right.z) &&
+         SameGeneratorFloatingValue(left.t, right.t);
 }
 
 using HitKey = std::tuple<int, int, std::int64_t>;
