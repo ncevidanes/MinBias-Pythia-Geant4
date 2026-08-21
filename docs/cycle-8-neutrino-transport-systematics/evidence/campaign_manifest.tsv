@@ -1,0 +1,4 @@
+role	condition	bunch_crossings	seed	threads	transport_neutrinos	git_commit	root_file	root_sha256
+smoke	on	3	512	1	1	56d44bdb8be06fa9ec416d9de8d1c35af7083d2a	smoke-on-3.root	e97491684208342e628cb2358257909fb7102046fa36bc63af1e51f4dbab1b97
+paired	off	100	512	1	0	56d44bdb8be06fa9ec416d9de8d1c35af7083d2a	paired-off-100.root	9e7f371cd2d41786c19ccc97bb58264464ef7ec618da6222ebab7261149ebf9c
+paired	on	100	512	1	1	56d44bdb8be06fa9ec416d9de8d1c35af7083d2a	paired-on-100.root	5907732b164872a31bf66cbd0a8e12625eabc5354ed9aa70ff97fe8ddadcf7c3

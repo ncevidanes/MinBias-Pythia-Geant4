@@ -1,0 +1,8 @@
+NEUTRINO_TRANSPORT_ANALYSIS_RESULT=PASS
+metadata_pairing=PASS
+event_pairing=PASS
+generator_pairing=PASS
+particle_accounting=PASS
+eligible_neutrinos=1
+outside_acceptance_neutrinos=4
+energy_difference_classification=REPORTED_NOT_ASSUMED
