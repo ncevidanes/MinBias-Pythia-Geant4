@@ -174,12 +174,42 @@ def validate_source_contract() -> None:
     require_tokens(
         SEED_POLICY_HEADER,
         (
-            "kPythiaWorkerSeedStride = 104729LL",
+            'kSeedPolicyName[] = "event-stable-v1"',
+            'kSeedIdentityName[] = "bcid"',
+            'kSeedMixerName[] = "splitmix64-v1"',
             "kPythiaMaximumSeed = 900000000LL",
-            "PythiaSeedForWorker",
-            "threadId < 0 ? 0 : threadId",
+            "enum class SeedStream",
+            "kPythiaInitialization = 1ULL",
+            "kInteractionCount = 2ULL",
+            "kPythiaSubevent = 3ULL",
+            "kVertexX = 4ULL",
+            "kVertexY = 5ULL",
+            "kVertexZ = 6ULL",
+            "kVertexT = 7ULL",
+            "SplitMix64",
+            "StableSeed64",
+            "PythiaSeedForStableTuple",
         ),
     )
+
+    seed_source = SEED_POLICY_HEADER.read_text(
+        encoding="utf-8"
+    )
+    forbidden_seed_tokens = (
+        "kPythiaWorkerSeedStride",
+        "PythiaSeedForWorker",
+        "threadId < 0 ? 0 : threadId",
+    )
+    surviving = [
+        token
+        for token in forbidden_seed_tokens
+        if token in seed_source
+    ]
+    if surviving:
+        raise PreflightError(
+            "legacy worker-seed contract remains active: "
+            + ", ".join(surviving)
+        )
     require_tokens(
         MAIN_SOURCE,
         (

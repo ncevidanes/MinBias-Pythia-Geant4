@@ -448,6 +448,12 @@ if(BUILD_TESTING)
   )
 
   add_test(
+    NAME cycle10_metadata_analyzer
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_cycle10_metadata_analyzer.py"
+  )
+
+  add_test(
     NAME performance_reproducibility_executor
     COMMAND "${Python3_EXECUTABLE}" -B
       "${PROJECT_SOURCE_DIR}/tests/test_performance_reproducibility_executor.py"

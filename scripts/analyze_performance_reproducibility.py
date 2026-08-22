@@ -83,10 +83,21 @@ GENERATOR_FIELDS = (
     "rejection_code",
 )
 
-METADATA_EXCLUDED_FIELDS = {
+REPEATABILITY_ALLOWED_METADATA_FIELDS = frozenset({
     "output_file",
     "normalized_config",
-}
+})
+
+CROSS_THREAD_ALLOWED_METADATA_FIELDS = frozenset({
+    "threads",
+    "output_file",
+    "normalized_config",
+})
+
+# Backward-compatible public name used by older external helpers.
+METADATA_EXCLUDED_FIELDS = set(
+    REPEATABILITY_ALLOWED_METADATA_FIELDS
+)
 
 
 class AnalysisError(RuntimeError):
@@ -156,7 +167,7 @@ def digest_rows(
     return digest_lines(canonical_lines(rows, fields))
 
 
-METADATA_FIELDS = (
+METADATA_FIELDS_V2 = (
     "schema_version",
     "project_version",
     "git_commit",
@@ -195,6 +206,54 @@ METADATA_FIELDS = (
     "single_particle_eta",
     "single_particle_phi",
 )
+
+METADATA_FIELDS_V3 = (
+    "schema_version",
+    "project_version",
+    "git_commit",
+    "git_describe",
+    "root_version",
+    "geant4_version",
+    "pythia_version",
+    "run",
+    "events",
+    "first_bcid",
+    "threads",
+    "seed_base",
+    "geant4_master_seed",
+    "seed_policy",
+    "seed_identity",
+    "seed_mixer",
+    "pythia_initialization_seed",
+    "pythia_seed_max",
+    "pythia_reseed_scope",
+    "interaction_mode",
+    "mean_interactions",
+    "fixed_interactions",
+    "pythia_config",
+    "physics_list",
+    "production_cut_mm",
+    "beam_sigma_x_mm",
+    "beam_sigma_y_mm",
+    "beam_sigma_z_mm",
+    "beam_sigma_t_ns",
+    "max_abs_eta",
+    "transport_neutrinos",
+    "generator_audit",
+    "check_overlaps",
+    "print_every",
+    "config_file",
+    "output_file",
+    "normalized_config",
+    "generator_mode",
+    "single_particle_pdg",
+    "single_particle_kinetic_energy_gev",
+    "single_particle_eta",
+    "single_particle_phi",
+)
+
+# Compatibility alias for historical Cycle 9 fixture builders.
+METADATA_FIELDS = METADATA_FIELDS_V2
 
 TREE_FIELDS = {
     "events": EVENT_FIELDS,
@@ -286,6 +345,36 @@ def read_branch_scalar(tree: Any, field: str) -> Any:
     )
 
 
+def metadata_schema_version(tree: Any) -> int:
+    entries = int(tree.GetEntries())
+    if entries != 1:
+        raise AnalysisError(
+            "metadata: expected exactly one row, "
+            f"found {entries}"
+        )
+
+    if tree.GetEntry(0) <= 0:
+        raise AnalysisError(
+            "metadata: failed to read schema-version row"
+        )
+
+    return int(read_branch_scalar(tree, "schema_version"))
+
+
+def metadata_fields_for_schema(
+    schema_version: int,
+) -> tuple[str, ...]:
+    if schema_version == 2:
+        return METADATA_FIELDS_V2
+    if schema_version == 3:
+        return METADATA_FIELDS_V3
+
+    raise AnalysisError(
+        "unsupported ROOT metadata schema_version="
+        + str(schema_version)
+    )
+
+
 def extract_tree_rows(
     tree: Any,
     fields: Sequence[str],
@@ -331,16 +420,33 @@ def analyze_root_file(path: Path) -> dict[str, Any]:
             "trees": {},
         }
 
+        metadata_schema: int | None = None
+
         for tree_name, fields in TREE_FIELDS.items():
             tree = root_file.Get(tree_name)
             if tree is None:
                 raise AnalysisError(f"missing TTree: {tree_name}")
-            rows = extract_tree_rows(tree, fields)
-            lines = canonical_lines(rows, fields)
+
+            effective_fields = fields
+            if tree_name == "metadata":
+                metadata_schema = metadata_schema_version(tree)
+                effective_fields = metadata_fields_for_schema(
+                    metadata_schema
+                )
+
+            rows = extract_tree_rows(tree, effective_fields)
+            lines = canonical_lines(rows, effective_fields)
             result["trees"][tree_name] = {
                 "entries": len(rows),
                 "digest": digest_lines(lines),
             }
+
+        if metadata_schema is None:
+            raise AnalysisError(
+                "metadata schema version was not resolved"
+            )
+
+        result["metadata_schema_version"] = metadata_schema
 
         scientific = hashlib.sha256()
         for tree_name in ("events", "hits", "generator"):
@@ -517,15 +623,33 @@ def extract_root_content(path: Path) -> dict[str, Any]:
     try:
         rows_by_tree: dict[str, list[dict[str, Any]]] = {}
         digests: dict[str, str] = {}
+        metadata_schema: int | None = None
+        metadata_fields: tuple[str, ...] | None = None
 
         for tree_name, fields in TREE_FIELDS.items():
             tree = root_file.Get(tree_name)
             if tree is None:
                 raise AnalysisError(f"{path}: missing TTree {tree_name}")
 
-            rows = extract_tree_rows(tree, fields)
+            effective_fields = fields
+            if tree_name == "metadata":
+                metadata_schema = metadata_schema_version(tree)
+                metadata_fields = metadata_fields_for_schema(
+                    metadata_schema
+                )
+                effective_fields = metadata_fields
+
+            rows = extract_tree_rows(tree, effective_fields)
             rows_by_tree[tree_name] = rows
-            digests[tree_name] = digest_rows(rows, fields)
+            digests[tree_name] = digest_rows(
+                rows,
+                effective_fields,
+            )
+
+        if metadata_schema is None or metadata_fields is None:
+            raise AnalysisError(
+                "metadata schema version was not resolved"
+            )
 
         return {
             "path": str(path),
@@ -538,6 +662,8 @@ def extract_root_content(path: Path) -> dict[str, Any]:
                 SCIENTIFIC_TREES,
             ),
             "metadata_digest": digests["metadata"],
+            "metadata_schema_version": metadata_schema,
+            "metadata_fields": metadata_fields,
         }
     finally:
         root_file.Close()
@@ -547,13 +673,30 @@ def compare_root_files(left_path: Path, right_path: Path) -> dict[str, Any]:
     left = extract_root_content(left_path)
     right = extract_root_content(right_path)
 
+    if (
+        left["metadata_schema_version"]
+        != right["metadata_schema_version"]
+    ):
+        raise AnalysisError(
+            "cannot directly compare ROOT metadata schemas "
+            + str(left["metadata_schema_version"])
+            + " and "
+            + str(right["metadata_schema_version"])
+        )
+
     tree_results: dict[str, dict[str, Any]] = {}
 
     for tree_name, fields in TREE_FIELDS.items():
+        effective_fields = (
+            left["metadata_fields"]
+            if tree_name == "metadata"
+            else fields
+        )
+
         comparison = compare_tree_rows(
             left["rows"][tree_name],
             right["rows"][tree_name],
-            fields,
+            effective_fields,
             TREE_KEYS[tree_name],
             tree_name,
         )
@@ -577,6 +720,12 @@ def compare_root_files(left_path: Path, right_path: Path) -> dict[str, Any]:
     return {
         "left_path": left["path"],
         "right_path": right["path"],
+        "left_metadata_schema_version": (
+            left["metadata_schema_version"]
+        ),
+        "right_metadata_schema_version": (
+            right["metadata_schema_version"]
+        ),
         "left_size_bytes": left["size_bytes"],
         "right_size_bytes": right["size_bytes"],
         "left_sha256": left["sha256"],
@@ -603,34 +752,116 @@ def yes_no(value: bool) -> str:
     return "YES" if value else "NO"
 
 
-def evaluate_comparison(
+def evaluate_metadata_policy(
     mode: str,
     comparison: Mapping[str, Any],
 ) -> dict[str, Any]:
     if mode == "repeatability":
-        accepted = bool(comparison["canonical_equal"])
+        allowed = REPEATABILITY_ALLOWED_METADATA_FIELDS
+    elif mode == "cross-thread":
+        allowed = CROSS_THREAD_ALLOWED_METADATA_FIELDS
+    else:
+        raise AnalysisError(
+            f"unsupported metadata comparison mode: {mode}"
+        )
+
+    metadata = comparison["trees"]["metadata"]
+    differing = set(metadata["differing_fields"])
+    unexpected = sorted(differing - allowed)
+
+    policy_equal = (
+        metadata["only_left_keys"] == 0
+        and metadata["only_right_keys"] == 0
+        and not unexpected
+    )
+
+    return {
+        "equal": policy_equal,
+        "allowed_fields": sorted(allowed),
+        "unexpected_fields": unexpected,
+    }
+
+
+def evaluate_comparison(
+    mode: str,
+    comparison: Mapping[str, Any],
+) -> dict[str, Any]:
+    metadata_policy = evaluate_metadata_policy(
+        mode,
+        comparison,
+    )
+
+    scientific_equal = bool(comparison["scientific_equal"])
+    metadata_equal = bool(comparison["metadata_equal"])
+
+    if mode == "repeatability":
+        accepted = (
+            scientific_equal
+            and bool(metadata_policy["equal"])
+        )
+
         return {
             "mode": mode,
             "accepted": accepted,
             "classification": "PASS" if accepted else "FAIL",
-            "scientific_equal": bool(comparison["scientific_equal"]),
-            "metadata_equal": bool(comparison["metadata_equal"]),
-            "raw_sha256_equal": bool(comparison["raw_sha256_equal"]),
+            "scientific_equal": scientific_equal,
+            "metadata_equal": metadata_equal,
+            "metadata_policy_equal": bool(
+                metadata_policy["equal"]
+            ),
+            "unexpected_metadata_fields": list(
+                metadata_policy["unexpected_fields"]
+            ),
+            "legacy_cycle9_policy": False,
+            "raw_sha256_equal": bool(
+                comparison["raw_sha256_equal"]
+            ),
         }
 
     if mode == "cross-thread":
-        scientific_equal = bool(comparison["scientific_equal"])
-        return {
-            "mode": mode,
-            "accepted": True,
-            "classification": (
+        left_schema = int(
+            comparison["left_metadata_schema_version"]
+        )
+        right_schema = int(
+            comparison["right_metadata_schema_version"]
+        )
+
+        legacy_cycle9 = (
+            left_schema <= 2 and right_schema <= 2
+        )
+
+        if legacy_cycle9:
+            accepted = True
+            classification = (
                 "IDENTICAL"
                 if scientific_equal
                 else "MEASURED_DIFFERENCE"
-            ),
+            )
+        else:
+            accepted = (
+                scientific_equal
+                and bool(metadata_policy["equal"])
+            )
+            classification = (
+                "IDENTICAL" if accepted else "FAIL"
+            )
+
+        return {
+            "mode": mode,
+            "accepted": accepted,
+            "classification": classification,
             "scientific_equal": scientific_equal,
-            "metadata_equal": bool(comparison["metadata_equal"]),
-            "raw_sha256_equal": bool(comparison["raw_sha256_equal"]),
+            "metadata_equal": metadata_equal,
+            "metadata_policy_equal": bool(
+                metadata_policy["equal"]
+            ),
+            "unexpected_metadata_fields": list(
+                metadata_policy["unexpected_fields"]
+            ),
+            "legacy_cycle9_policy": legacy_cycle9,
+            "raw_sha256_equal": bool(
+                comparison["raw_sha256_equal"]
+            ),
         }
 
     raise AnalysisError(f"unsupported comparison mode: {mode}")
@@ -642,6 +873,9 @@ def inspection_summary(result: Mapping[str, Any]) -> dict[str, Any]:
         "path": result["path"],
         "size_bytes": result["size_bytes"],
         "sha256": result["sha256"],
+        "metadata_schema_version": int(
+            result["metadata_schema_version"]
+        ),
         "scientific_digest": result["scientific_digest"],
         "metadata_digest": result["metadata_digest"],
         "tree_entries": {
@@ -662,6 +896,10 @@ def print_inspection(result: Mapping[str, Any]) -> None:
     print("ROOT_PATH=" + summary["path"])
     print("ROOT_SIZE_BYTES=" + str(summary["size_bytes"]))
     print("ROOT_SHA256=" + summary["sha256"])
+    print(
+        "METADATA_SCHEMA_VERSION="
+        + str(summary["metadata_schema_version"])
+    )
     print("SCIENTIFIC_DIGEST=" + summary["scientific_digest"])
     print("METADATA_DIGEST=" + summary["metadata_digest"])
     for tree_name in ("events", "hits", "generator", "metadata"):
@@ -696,6 +934,18 @@ def print_comparison(
     print(
         "CANONICAL_EQUAL="
         + yes_no(bool(comparison["canonical_equal"]))
+    )
+    print(
+        "METADATA_POLICY_EQUAL="
+        + yes_no(bool(evaluation["metadata_policy_equal"]))
+    )
+    print(
+        "UNEXPECTED_METADATA_FIELDS="
+        + ",".join(evaluation["unexpected_metadata_fields"])
+    )
+    print(
+        "LEGACY_CYCLE9_POLICY="
+        + yes_no(bool(evaluation["legacy_cycle9_policy"]))
     )
     print("CLASSIFICATION=" + str(evaluation["classification"]))
 
@@ -793,7 +1043,7 @@ def analyzer_main(argv: Sequence[str] | None = None) -> int:
             )
         )
 
-    if args.mode == "repeatability" and not evaluation["accepted"]:
+    if not evaluation["accepted"]:
         return 2
 
     return 0

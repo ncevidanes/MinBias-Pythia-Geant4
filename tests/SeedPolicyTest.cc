@@ -381,18 +381,6 @@ void CheckOperationalCollisionDomain() {
       "Unexpected mapped-PYTHIA domain size");
 }
 
-void CheckLegacyNormalizationStillAvailable() {
-  RequireEqualInt(
-      pg::NormalizePythiaSeed(1LL),
-      1,
-      "Legacy normalization lower bound changed");
-
-  RequireEqualInt(
-      pg::NormalizePythiaSeed(
-          pg::kPythiaMaximumSeed + 1LL),
-      1,
-      "Legacy normalization wrap-around changed");
-}
 
 }  // namespace
 
@@ -405,7 +393,6 @@ int main() {
     CheckPythiaMappingKnownVectors();
     CheckTupleSensitivity();
     CheckOperationalCollisionDomain();
-    CheckLegacyNormalizationStillAvailable();
 
     std::cout
         << "Event-stable seed policy tests passed"

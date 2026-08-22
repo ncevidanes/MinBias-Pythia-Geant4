@@ -214,7 +214,7 @@ def write_fixture(
     metadata = [
         make_row(
             ANALYZER.METADATA_FIELDS,
-            schema_version=1,
+            schema_version=2,
             project_version="synthetic",
             git_commit="deadbeef",
             git_describe="synthetic",

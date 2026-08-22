@@ -12,31 +12,6 @@ inline constexpr char kSeedMixerName[] = "splitmix64-v1";
 inline constexpr long long kPythiaMaximumSeed = 900000000LL;
 
 /*
- * Legacy Cycle 9 worker-seed policy.
- *
- * These symbols remain temporarily because the production generator and
- * ROOT metadata still consume them. Cycle 10 integration will remove that
- * dependency after the event-stable primitive is independently validated.
- */
-inline constexpr long long kPythiaWorkerSeedStride = 104729LL;
-
-inline int NormalizePythiaSeed(const long long seed) {
-  const long long normalized =
-      ((seed - 1) % kPythiaMaximumSeed +
-       kPythiaMaximumSeed) %
-          kPythiaMaximumSeed +
-      1;
-  return static_cast<int>(normalized);
-}
-
-inline int PythiaSeedForWorker(const int seedBase, const int threadId) {
-  const int normalizedThreadId = threadId < 0 ? 0 : threadId;
-  return NormalizePythiaSeed(
-      static_cast<long long>(seedBase) +
-      kPythiaWorkerSeedStride * normalizedThreadId);
-}
-
-/*
  * Event-stable Cycle 10 policy.
  *
  * Scientific streams are keyed exclusively by:

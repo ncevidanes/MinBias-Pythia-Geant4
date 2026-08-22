@@ -12,6 +12,7 @@
 #include "G4Threading.hh"
 #endif
 
+#include <cstdint>
 #include <numeric>
 
 namespace pg {
@@ -126,9 +127,12 @@ void RootOutput::Book() {
   analysis->CreateNtupleIColumn("threads");
   analysis->CreateNtupleIColumn("seed_base");
   analysis->CreateNtupleIColumn("geant4_master_seed");
-  analysis->CreateNtupleIColumn("pythia_seed_base");
-  analysis->CreateNtupleIColumn("pythia_worker_seed_stride");
+  analysis->CreateNtupleSColumn("seed_policy");
+  analysis->CreateNtupleSColumn("seed_identity");
+  analysis->CreateNtupleSColumn("seed_mixer");
+  analysis->CreateNtupleIColumn("pythia_initialization_seed");
   analysis->CreateNtupleIColumn("pythia_seed_max");
+  analysis->CreateNtupleSColumn("pythia_reseed_scope");
   analysis->CreateNtupleSColumn("interaction_mode");
   analysis->CreateNtupleDColumn("mean_interactions");
   analysis->CreateNtupleIColumn("fixed_interactions");
@@ -168,6 +172,13 @@ void RootOutput::BeginRun(const Configuration& configuration) {
 void RootOutput::WriteMetadata(const Configuration& configuration) {
   auto* analysis = G4AnalysisManager::Instance();
 
+  const int pythiaInitializationSeed =
+      PythiaSeedForStableTuple(
+          static_cast<std::uint64_t>(configuration.seedBase),
+          0ULL,
+          0ULL,
+          SeedStream::kPythiaInitialization);
+
   analysis->FillNtupleIColumn(
       kMetadataNtuple, 0, build::kRootSchemaVersion);
   analysis->FillNtupleSColumn(
@@ -194,64 +205,69 @@ void RootOutput::WriteMetadata(const Configuration& configuration) {
       kMetadataNtuple, 11, configuration.seedBase);
   analysis->FillNtupleIColumn(
       kMetadataNtuple, 12, configuration.seedBase);
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 13, std::string(kSeedPolicyName));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 14, std::string(kSeedIdentityName));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 15, std::string(kSeedMixerName));
   analysis->FillNtupleIColumn(
-      kMetadataNtuple, 13, configuration.seedBase);
+      kMetadataNtuple, 16, pythiaInitializationSeed);
   analysis->FillNtupleIColumn(
-      kMetadataNtuple, 14,
-      static_cast<int>(kPythiaWorkerSeedStride));
-  analysis->FillNtupleIColumn(
-      kMetadataNtuple, 15,
+      kMetadataNtuple, 17,
       static_cast<int>(kPythiaMaximumSeed));
   analysis->FillNtupleSColumn(
-      kMetadataNtuple, 16, configuration.interactionMode);
-  analysis->FillNtupleDColumn(
-      kMetadataNtuple, 17, configuration.meanInteractions);
-  analysis->FillNtupleIColumn(
-      kMetadataNtuple, 18, configuration.fixedInteractions);
+      kMetadataNtuple, 18, "subevent");
   analysis->FillNtupleSColumn(
-      kMetadataNtuple, 19, configuration.pythiaConfig.string());
-  analysis->FillNtupleSColumn(
-      kMetadataNtuple, 20, configuration.physicsList);
+      kMetadataNtuple, 19, configuration.interactionMode);
   analysis->FillNtupleDColumn(
-      kMetadataNtuple, 21, configuration.productionCutMm);
-  analysis->FillNtupleDColumn(
-      kMetadataNtuple, 22, configuration.beamSigmaXmm);
-  analysis->FillNtupleDColumn(
-      kMetadataNtuple, 23, configuration.beamSigmaYmm);
-  analysis->FillNtupleDColumn(
-      kMetadataNtuple, 24, configuration.beamSigmaZmm);
-  analysis->FillNtupleDColumn(
-      kMetadataNtuple, 25, configuration.beamSigmaTns);
-  analysis->FillNtupleDColumn(
-      kMetadataNtuple, 26, configuration.maxAbsEta);
+      kMetadataNtuple, 20, configuration.meanInteractions);
   analysis->FillNtupleIColumn(
-      kMetadataNtuple, 27,
+      kMetadataNtuple, 21, configuration.fixedInteractions);
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 22, configuration.pythiaConfig.string());
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 23, configuration.physicsList);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 24, configuration.productionCutMm);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 25, configuration.beamSigmaXmm);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 26, configuration.beamSigmaYmm);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 27, configuration.beamSigmaZmm);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 28, configuration.beamSigmaTns);
+  analysis->FillNtupleDColumn(
+      kMetadataNtuple, 29, configuration.maxAbsEta);
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 30,
       configuration.transportNeutrinos ? 1 : 0);
   analysis->FillNtupleIColumn(
-      kMetadataNtuple, 28,
+      kMetadataNtuple, 31,
       configuration.generatorAudit ? 1 : 0);
   analysis->FillNtupleIColumn(
-      kMetadataNtuple, 29,
+      kMetadataNtuple, 32,
       configuration.checkOverlaps ? 1 : 0);
   analysis->FillNtupleIColumn(
-      kMetadataNtuple, 30, configuration.printEvery);
+      kMetadataNtuple, 33, configuration.printEvery);
   analysis->FillNtupleSColumn(
-      kMetadataNtuple, 31, configuration.sourceFile.string());
+      kMetadataNtuple, 34, configuration.sourceFile.string());
   analysis->FillNtupleSColumn(
-      kMetadataNtuple, 32, configuration.outputFile.string());
+      kMetadataNtuple, 35, configuration.outputFile.string());
   analysis->FillNtupleSColumn(
-      kMetadataNtuple, 33, configuration.NormalizedText());
+      kMetadataNtuple, 36, configuration.NormalizedText());
   analysis->FillNtupleSColumn(
-      kMetadataNtuple, 34, configuration.generatorMode);
+      kMetadataNtuple, 37, configuration.generatorMode);
   analysis->FillNtupleIColumn(
-      kMetadataNtuple, 35, configuration.singleParticlePdg);
+      kMetadataNtuple, 38, configuration.singleParticlePdg);
   analysis->FillNtupleDColumn(
-      kMetadataNtuple, 36,
+      kMetadataNtuple, 39,
       configuration.singleParticleKineticEnergyGeV);
   analysis->FillNtupleDColumn(
-      kMetadataNtuple, 37, configuration.singleParticleEta);
+      kMetadataNtuple, 40, configuration.singleParticleEta);
   analysis->FillNtupleDColumn(
-      kMetadataNtuple, 38, configuration.singleParticlePhi);
+      kMetadataNtuple, 41, configuration.singleParticlePhi);
   analysis->AddNtupleRow(kMetadataNtuple);
 }
 
