@@ -262,6 +262,27 @@ if(BUILD_TESTING)
   add_test(NAME seed_policy COMMAND seed_policy_test)
 
   add_executable(
+    stable_random_test
+    tests/StableRandomTest.cc
+  )
+  target_include_directories(
+    stable_random_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    stable_random_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  add_test(
+    NAME stable_random
+    COMMAND stable_random_test
+  )
+
+  add_executable(
     configuration_test
     tests/ConfigurationTest.cc
     src/Configuration.cc

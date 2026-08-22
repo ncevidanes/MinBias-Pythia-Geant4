@@ -3,12 +3,12 @@
 
 #include "Configuration.hh"
 #include "ParticleDecision.hh"
+#include "SeedPolicy.hh"
 
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "Pythia8/Pythia.h"
 
 #include <memory>
-#include <random>
 
 class G4Event;
 
@@ -22,8 +22,10 @@ class PrimaryGeneratorAction final
   void GeneratePrimaries(G4Event* event) override;
 
  private:
-  int DrawInteractionCount();
-  double DrawGaussian(double sigma);
+  int DrawInteractionCount(int bcid) const;
+  double DrawGaussian(int bcid, int subevent,
+                      SeedStream stream,
+                      double sigma) const;
   void AuditPythiaParticle(int eventId, int bcid, int subevent, int index,
                            ParticleRejectionCode rejectionCode);
   void GeneratePythiaPrimaries(G4Event* event);
@@ -31,7 +33,6 @@ class PrimaryGeneratorAction final
 
   Configuration configuration_;
   std::unique_ptr<Pythia8::Pythia> pythia_;
-  std::mt19937_64 random_;
 };
 
 }  // namespace pg

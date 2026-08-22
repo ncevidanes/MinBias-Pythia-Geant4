@@ -4,6 +4,7 @@
 #include "LineageInfo.hh"
 #include "RootOutput.hh"
 #include "SeedPolicy.hh"
+#include "StableRandom.hh"
 #include "SingleParticleKinematics.hh"
 
 #include "G4Event.hh"
@@ -18,6 +19,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -30,8 +32,6 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(Configuration configuration)
   const int seed = PythiaSeedForWorker(
       configuration_.seedBase,
       G4Threading::G4GetThreadId());
-  random_.seed(static_cast<std::mt19937_64::result_type>(seed));
-
   if (configuration_.generatorMode != "pythia") {
     return;
   }
@@ -53,21 +53,29 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(Configuration configuration)
   }
 }
 
-int PrimaryGeneratorAction::DrawInteractionCount() {
+int PrimaryGeneratorAction::DrawInteractionCount(
+    const int bcid) const {
   if (configuration_.interactionMode == "fixed") {
     return configuration_.fixedInteractions;
   }
-  std::poisson_distribution<int> distribution(
-      configuration_.meanInteractions);
-  return distribution(random_);
+
+  return DrawStablePoisson(
+      configuration_.meanInteractions,
+      static_cast<std::uint64_t>(configuration_.seedBase),
+      static_cast<std::uint64_t>(bcid));
 }
 
-double PrimaryGeneratorAction::DrawGaussian(const double sigma) {
-  if (sigma == 0.0) {
-    return 0.0;
-  }
-  std::normal_distribution<double> distribution(0.0, sigma);
-  return distribution(random_);
+double PrimaryGeneratorAction::DrawGaussian(
+    const int bcid,
+    const int subevent,
+    const SeedStream stream,
+    const double sigma) const {
+  return DrawStableVertexGaussian(
+      sigma,
+      static_cast<std::uint64_t>(configuration_.seedBase),
+      static_cast<std::uint64_t>(bcid),
+      static_cast<std::uint64_t>(subevent),
+      stream);
 }
 
 void PrimaryGeneratorAction::AuditPythiaParticle(
@@ -122,7 +130,7 @@ void PrimaryGeneratorAction::GeneratePrimaries(G4Event* event) {
 
 void PrimaryGeneratorAction::GeneratePythiaPrimaries(G4Event* event) {
   EventState& state = EventState::Instance();
-  state.requestedInteractions = DrawInteractionCount();
+  state.requestedInteractions = DrawInteractionCount(state.bcid);
 
   auto* particleTable = G4ParticleTable::GetParticleTable();
 
@@ -136,13 +144,21 @@ void PrimaryGeneratorAction::GeneratePythiaPrimaries(G4Event* event) {
     state.generatorParticles += pythia_->event.size();
 
     const double collisionXmm =
-        DrawGaussian(configuration_.beamSigmaXmm);
+        DrawGaussian(
+            state.bcid, subevent, SeedStream::kVertexX,
+            configuration_.beamSigmaXmm);
     const double collisionYmm =
-        DrawGaussian(configuration_.beamSigmaYmm);
+        DrawGaussian(
+            state.bcid, subevent, SeedStream::kVertexY,
+            configuration_.beamSigmaYmm);
     const double collisionZmm =
-        DrawGaussian(configuration_.beamSigmaZmm);
+        DrawGaussian(
+            state.bcid, subevent, SeedStream::kVertexZ,
+            configuration_.beamSigmaZmm);
     const double collisionTns =
-        DrawGaussian(configuration_.beamSigmaTns);
+        DrawGaussian(
+            state.bcid, subevent, SeedStream::kVertexT,
+            configuration_.beamSigmaTns);
 
     for (int index = 0; index < pythia_->event.size(); ++index) {
       const auto& particle = pythia_->event[index];
@@ -265,10 +281,18 @@ void PrimaryGeneratorAction::GenerateSingleParticle(G4Event* event) {
       new PrimaryLineageInfo(0, configuration_.singleParticlePdg));
 
   auto* vertex = new G4PrimaryVertex(
-      DrawGaussian(configuration_.beamSigmaXmm) * mm,
-      DrawGaussian(configuration_.beamSigmaYmm) * mm,
-      DrawGaussian(configuration_.beamSigmaZmm) * mm,
-      DrawGaussian(configuration_.beamSigmaTns) * ns);
+      DrawGaussian(
+          state.bcid, 0, SeedStream::kVertexX,
+          configuration_.beamSigmaXmm) * mm,
+      DrawGaussian(
+          state.bcid, 0, SeedStream::kVertexY,
+          configuration_.beamSigmaYmm) * mm,
+      DrawGaussian(
+          state.bcid, 0, SeedStream::kVertexZ,
+          configuration_.beamSigmaZmm) * mm,
+      DrawGaussian(
+          state.bcid, 0, SeedStream::kVertexT,
+          configuration_.beamSigmaTns) * ns);
   vertex->SetPrimary(primary);
   event->AddPrimaryVertex(vertex);
   ++state.transportedParticles;
