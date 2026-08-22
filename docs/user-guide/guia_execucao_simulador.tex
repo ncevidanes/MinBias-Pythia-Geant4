@@ -1,0 +1,796 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+
+\geometry{margin=2.3cm}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  urlcolor=blue!60!black
+}
+\setlist{nosep}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{MinBias-Pythia-Geant4}
+\rhead{Guia de Execução}
+\cfoot{\thepage}
+
+\definecolor{codebg}{RGB}{247,247,247}
+\definecolor{codeframe}{RGB}{210,210,210}
+
+\lstdefinestyle{shell}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false
+}
+
+\lstdefinestyle{config}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false
+}
+
+\title{\textbf{MinBias-Pythia-Geant4}\\
+Guia de Configuração e Execução pela Linha de Comando}
+\author{Projeto MinBias-Pythia-Geant4}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Objetivo deste guia}
+
+Este documento descreve, de forma operacional e reproduzível, como configurar e
+executar o simulador \texttt{MinBias-Pythia-Geant4} a partir da linha de comando.
+
+O fluxo principal do programa é
+
+\[
+\text{arquivo de configuração}
+\longrightarrow
+\text{sobrescritas pela CLI}
+\longrightarrow
+\text{validação}
+\longrightarrow
+\text{PYTHIA}
+\longrightarrow
+\text{Geant4}
+\longrightarrow
+\text{ROOT}.
+\]
+
+O arquivo \texttt{.conf} define um perfil-base. As opções fornecidas na linha de
+comando substituem, quando suportadas, os valores desse perfil apenas para a
+execução corrente.
+
+\section{Requisitos}
+
+Antes da execução, devem estar disponíveis no ambiente:
+
+\begin{itemize}
+  \item PYTHIA 8;
+  \item Geant4;
+  \item ROOT;
+  \item CMake;
+  \item compilador C++ compatível;
+  \item Python 3;
+  \item Git, para desenvolvimento e auditoria do repositório.
+\end{itemize}
+
+No ambiente de desenvolvimento de referência, normalmente utiliza-se:
+
+\begin{lstlisting}[style=shell]
+conda activate ambiente_fisica
+\end{lstlisting}
+
+Entre no diretório do projeto:
+
+\begin{lstlisting}[style=shell]
+cd /caminho/para/PythiaGeantOneStage_V06
+\end{lstlisting}
+
+\section{Interface recomendada: \texttt{run.sh}}
+
+Para uso cotidiano, a interface recomendada é o script \texttt{run.sh}.
+
+Ele:
+
+\begin{enumerate}
+  \item verifica a disponibilidade do PYTHIA;
+  \item verifica o ambiente Geant4;
+  \item valida o projeto e o arquivo de configuração;
+  \item configura o CMake;
+  \item compila o executável em modo \texttt{Release};
+  \item executa \texttt{build/pythia\_geant};
+  \item repassa ao simulador as opções adicionais fornecidas na CLI.
+\end{enumerate}
+
+A forma geral é:
+
+\begin{lstlisting}[style=shell]
+./run.sh ARQUIVO.conf [opcoes]
+\end{lstlisting}
+
+Exemplo:
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 100 \
+    --mu 1 \
+    --threads 2 \
+    --seed 9512 \
+    --output outputs/meu_minbias.root
+\end{lstlisting}
+
+\section{Execução direta do binário}
+
+Quando o projeto já está compilado, o executável também pode ser chamado
+diretamente:
+
+\begin{lstlisting}[style=shell]
+./build/pythia_geant \
+    --config config/production.conf \
+    --events 100 \
+    --mu 1 \
+    --threads 2 \
+    --seed 9512 \
+    --output outputs/meu_minbias.root
+\end{lstlisting}
+
+A opção \texttt{--config} é obrigatória na chamada direta do executável.
+
+Para consultar a ajuda:
+
+\begin{lstlisting}[style=shell]
+./build/pythia_geant --help
+\end{lstlisting}
+
+ou
+
+\begin{lstlisting}[style=shell]
+./build/pythia_geant -h
+\end{lstlisting}
+
+\section{Regra de precedência}
+
+A configuração efetiva segue a ordem:
+
+\begin{enumerate}
+  \item carregamento do arquivo \texttt{.conf};
+  \item aplicação das opções da linha de comando;
+  \item validação da configuração final;
+  \item impressão da configuração efetiva;
+  \item execução, exceto quando \texttt{--dry-run} é usado.
+\end{enumerate}
+
+Assim, se \texttt{production.conf} contiver:
+
+\begin{lstlisting}[style=config]
+events = 3000
+threads = 1
+seed_base = 512
+mean_interactions = 50.0
+\end{lstlisting}
+
+mas a execução for:
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 200 \
+    --mu 2 \
+    --threads 2 \
+    --seed 12345 \
+    --output outputs/teste.root
+\end{lstlisting}
+
+a configuração efetiva conterá, entre outros parâmetros:
+
+\begin{lstlisting}[style=config]
+events = 200
+threads = 2
+seed_base = 12345
+interaction_mode = poisson
+mean_interactions = 2
+\end{lstlisting}
+
+Os demais parâmetros permanecem com os valores definidos no arquivo-base.
+
+\section{Opções atualmente disponíveis na linha de comando}
+
+\begin{longtable}{>{\ttfamily}p{4.5cm} p{7.6cm} p{3.0cm}}
+\toprule
+\textnormal{Opção} & Significado & Exemplo \\
+\midrule
+\endhead
+
+--config &
+Arquivo de configuração-base. Obrigatório no executável direto. &
+config/production.conf \\
+
+--events &
+Número de bunch crossings/eventos Geant4. &
+1000 \\
+
+--mu &
+Média Poisson de interações por bunch crossing. Também força
+\texttt{interaction\_mode = poisson}. &
+50 \\
+
+--threads &
+Número de workers Geant4. &
+2 \\
+
+--seed &
+Seed-base da execução. &
+9512 \\
+
+--output &
+Arquivo ROOT de saída. &
+outputs/run.root \\
+
+--physics-list &
+Lista de física Geant4. &
+FTFP\_BERT\_ATL \\
+
+--production-cut-mm &
+Production cut padrão, em milímetros. &
+1.0 \\
+
+--generator-mode &
+Modo do gerador: \texttt{pythia} ou \texttt{single\_particle}. &
+pythia \\
+
+--particle-pdg &
+Código PDG no modo de partícula única. &
+11 \\
+
+--particle-kinetic-energy-gev &
+Energia cinética, em GeV, no modo de partícula única. &
+50 \\
+
+--particle-eta &
+Pseudorapidez da partícula única. &
+0.5 \\
+
+--particle-phi &
+Ângulo azimutal da partícula única, em radianos. &
+0.0 \\
+
+--dry-run &
+Valida e imprime a configuração sem executar o transporte. &
+--- \\
+
+--help, -h &
+Exibe a ajuda do programa. &
+--- \\
+
+\bottomrule
+\end{longtable}
+
+\section{Configuração-base de produção}
+
+O arquivo \texttt{config/production.conf} é o perfil de produção de referência.
+Sua estrutura atual é equivalente a:
+
+\begin{lstlisting}[style=config]
+generator_mode = pythia
+
+events = 3000
+first_bcid = 0
+threads = 1
+seed_base = 512
+
+interaction_mode = poisson
+mean_interactions = 50.0
+fixed_interactions = 1
+
+pythia_config = pythia_minbias.cmnd
+physics_list = FTFP_BERT_ATL
+production_cut_mm = 1.0
+
+beam_sigma_x_mm = 0.0
+beam_sigma_y_mm = 0.0
+beam_sigma_z_mm = 0.0
+beam_sigma_t_ns = 0.0
+
+max_abs_eta = 1.8
+
+transport_neutrinos = false
+generator_audit = false
+check_overlaps = false
+print_every = 10
+
+output = ../outputs/minbias_mu50.root
+\end{lstlisting}
+
+\subsection{Caminhos relativos}
+
+Os caminhos definidos dentro do arquivo \texttt{.conf} são resolvidos
+relativamente ao diretório do próprio arquivo de configuração.
+
+Por exemplo:
+
+\begin{lstlisting}[style=config]
+pythia_config = pythia_minbias.cmnd
+output = ../outputs/minbias_mu50.root
+\end{lstlisting}
+
+pode ser usado mesmo quando o programa é chamado a partir de outro diretório,
+desde que a estrutura relativa ao arquivo de configuração seja preservada.
+
+\section{Parâmetros que ainda dependem do arquivo \texttt{.conf}}
+
+Na interface atual, os parâmetros abaixo são reconhecidos pelo arquivo de
+configuração, mas ainda não possuem sobrescrita própria pela CLI:
+
+\begin{itemize}
+  \item \texttt{first\_bcid};
+  \item \texttt{interaction\_mode};
+  \item \texttt{fixed\_interactions};
+  \item \texttt{pythia\_config};
+  \item \texttt{beam\_sigma\_x\_mm};
+  \item \texttt{beam\_sigma\_y\_mm};
+  \item \texttt{beam\_sigma\_z\_mm};
+  \item \texttt{beam\_sigma\_t\_ns};
+  \item \texttt{max\_abs\_eta};
+  \item \texttt{transport\_neutrinos};
+  \item \texttt{generator\_audit};
+  \item \texttt{check\_overlaps};
+  \item \texttt{print\_every}.
+\end{itemize}
+
+Portanto, opções como
+
+\begin{lstlisting}[style=shell]
+--transport-neutrinos true
+\end{lstlisting}
+
+\textbf{não existem na interface atual}. Para ativar esse comportamento, deve-se
+usar um arquivo de configuração apropriado.
+
+\section{Minimum-bias com pile-up Poisson}
+
+O modo normal de produção minimum-bias utiliza:
+
+\begin{lstlisting}[style=config]
+interaction_mode = poisson
+mean_interactions = 50.0
+\end{lstlisting}
+
+Na linha de comando, a forma recomendada é:
+
+\begin{lstlisting}[style=shell]
+--mu 50
+\end{lstlisting}
+
+A opção \texttt{--mu} atualiza a média e força o modo de interação para
+\texttt{poisson}.
+
+Exemplo de produção:
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 3000 \
+    --mu 50 \
+    --threads 2 \
+    --seed 50050 \
+    --output outputs/minbias_mu50.root
+\end{lstlisting}
+
+\section{Número fixo de interações}
+
+Para exigir exatamente um número fixo de interações por bunch crossing, use um
+arquivo \texttt{.conf} com:
+
+\begin{lstlisting}[style=config]
+interaction_mode = fixed
+fixed_interactions = 5
+\end{lstlisting}
+
+Na interface atual, não existe a opção
+\texttt{--fixed-interactions}; portanto, esse modo deve ser configurado pelo
+arquivo \texttt{.conf}.
+
+\section{Dry run: validação antes do transporte}
+
+Antes de uma produção longa, recomenda-se executar exatamente o comando desejado
+com \texttt{--dry-run}:
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 10000 \
+    --mu 50 \
+    --threads 2 \
+    --seed 9512 \
+    --output outputs/minbias_mu50_10k.root \
+    --dry-run
+\end{lstlisting}
+
+O programa imprime a configuração efetiva e encerra antes do transporte Geant4.
+
+Depois de conferir os parâmetros, execute novamente sem
+\texttt{--dry-run}:
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 10000 \
+    --mu 50 \
+    --threads 2 \
+    --seed 9512 \
+    --output outputs/minbias_mu50_10k.root
+\end{lstlisting}
+
+Fluxo recomendado:
+
+\[
+\text{montar comando}
+\rightarrow
+\texttt{--dry-run}
+\rightarrow
+\text{conferir}
+\rightarrow
+\text{remover \texttt{--dry-run}}
+\rightarrow
+\text{produção}.
+\]
+
+\section{Exemplos minimum-bias}
+
+\subsection{Teste pequeno, \texorpdfstring{$\mu=1$}{mu=1}}
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 100 \
+    --mu 1 \
+    --threads 2 \
+    --seed 9512 \
+    --output outputs/minbias_mu1.root
+\end{lstlisting}
+
+\subsection{Campanha com \texorpdfstring{$\mu=10$}{mu=10}}
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 1000 \
+    --mu 10 \
+    --threads 2 \
+    --seed 10010 \
+    --output outputs/minbias_mu10.root
+\end{lstlisting}
+
+\subsection{Campanha com \texorpdfstring{$\mu=50$}{mu=50}}
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 3000 \
+    --mu 50 \
+    --threads 2 \
+    --seed 50050 \
+    --output outputs/minbias_mu50.root
+\end{lstlisting}
+
+\subsection{Campanha maior}
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 10000 \
+    --mu 50 \
+    --threads 2 \
+    --seed 9512 \
+    --output outputs/minbias_mu50_10k.root
+\end{lstlisting}
+
+\section{Lista de física Geant4}
+
+O perfil de referência usa:
+
+\begin{lstlisting}[style=config]
+physics_list = FTFP_BERT_ATL
+\end{lstlisting}
+
+Pode-se sobrescrever a lista de física:
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 100 \
+    --mu 1 \
+    --threads 2 \
+    --physics-list FTFP_BERT \
+    --output outputs/minbias_ftfp_bert.root
+\end{lstlisting}
+
+Para comparações científicas, deve-se registrar explicitamente qual lista foi
+utilizada. O perfil \texttt{FTFP\_BERT\_ATL} deve permanecer como referência
+enquanto não houver um estudo específico justificando outra escolha.
+
+\section{Modo de partícula única}
+
+O mesmo executável suporta \texttt{single\_particle}.
+
+Exemplo para um elétron de 50 GeV:
+
+\begin{lstlisting}[style=shell]
+./run.sh config/single_particle.conf \
+    --generator-mode single_particle \
+    --events 100 \
+    --threads 2 \
+    --particle-pdg 11 \
+    --particle-kinetic-energy-gev 50 \
+    --particle-eta 0.5 \
+    --particle-phi 0.0 \
+    --output outputs/electron_50gev.root
+\end{lstlisting}
+
+As validações atuais exigem, entre outros critérios:
+
+\begin{itemize}
+  \item PDG diferente de zero;
+  \item energia cinética positiva e finita;
+  \item \(\lvert\eta\rvert \leq \texttt{max\_abs\_eta}\);
+  \item \(\phi \in [-\pi,\pi]\).
+\end{itemize}
+
+O modo de partícula única é útil para testes de resposta e validação. O foco de
+produção deste projeto permanece sendo minimum-bias com PYTHIA.
+
+\section{Arquivo ROOT e manifesto}
+
+A saída principal é o arquivo ROOT indicado por:
+
+\begin{lstlisting}[style=shell]
+--output outputs/minha_execucao.root
+\end{lstlisting}
+
+Antes do transporte, o programa também registra um manifesto textual ao lado da
+saída, usando o nome:
+
+\begin{lstlisting}[style=shell]
+outputs/minha_execucao.root.manifest.txt
+\end{lstlisting}
+
+Esse manifesto contém a configuração normalizada usada pela execução e é
+importante para rastreabilidade.
+
+Não sobrescreva resultados importantes sem antes preservá-los ou atribuir um
+novo nome ao arquivo de saída.
+
+\section{Reprodutibilidade e número de threads}
+
+\subsection{Estado validado até o Ciclo 9}
+
+O Ciclo 9 demonstrou:
+
+\begin{itemize}
+  \item reprodutibilidade canônica exata entre repetições com 1 thread;
+  \item reprodutibilidade canônica exata entre repetições com 2 threads;
+  \item diferenças determinísticas entre uma campanha 1T e uma campanha 2T.
+\end{itemize}
+
+Portanto, \textbf{na implementação atual, o número de threads faz parte da
+definição da realização estatística}. Mudar de 1 para 2 threads pode alterar os
+eventos gerados, mesmo mantendo a mesma seed-base.
+
+Consequência operacional:
+
+\begin{quote}
+Para reproduzir exatamente uma campanha existente, preserve
+\texttt{--threads}, \texttt{--seed}, arquivo \texttt{.conf}, versão do código e
+demais parâmetros.
+\end{quote}
+
+Os resultados completos estão documentados em:
+
+\begin{lstlisting}[style=shell]
+docs/cycle-9-performance-reproducibility/results.md
+\end{lstlisting}
+
+Na máquina de referência do Ciclo 9, duas threads produziram speedup de
+aproximadamente \(1.717\times\), eficiência paralela de aproximadamente
+\(85.86\%\) e redução mediana de tempo de parede de aproximadamente \(41.77\%\).
+
+Por esse motivo, 2 threads são uma boa escolha operacional nessa máquina quando
+o objetivo é throughput, desde que se compreenda a política de
+reprodutibilidade descrita acima.
+
+\section{Boas práticas para campanhas}
+
+Para toda campanha destinada a análise científica:
+
+\begin{enumerate}
+  \item mantenha o repositório em um commit conhecido;
+  \item registre o SHA do commit;
+  \item registre o arquivo \texttt{.conf};
+  \item registre todas as sobrescritas da CLI;
+  \item use uma seed explícita;
+  \item preserve o número de threads;
+  \item use \texttt{--dry-run} antes da produção;
+  \item use nomes de saída que identifiquem a campanha;
+  \item preserve o manifesto;
+  \item não descarte execuções apenas por apresentarem tempo desfavorável;
+  \item para benchmarks, execute repetições independentes;
+  \item não misture arquivos produzidos por configurações diferentes sem
+        registrar essa diferença.
+\end{enumerate}
+
+\section{Convenção sugerida para nomes de saída}
+
+Uma convenção simples é:
+
+\begin{lstlisting}[style=shell]
+outputs/minbias_mu<mu>_nev<eventos>_t<threads>_seed<seed>.root
+\end{lstlisting}
+
+Exemplo:
+
+\begin{lstlisting}[style=shell]
+outputs/minbias_mu50_nev10000_t2_seed9512.root
+\end{lstlisting}
+
+Isso não substitui o manifesto, mas reduz ambiguidades durante a análise.
+
+\section{Erros comuns}
+
+\subsection{PYTHIA não encontrado}
+
+Se aparecer uma mensagem semelhante a:
+
+\begin{lstlisting}[style=shell]
+pythia8-config nao foi encontrado no PATH
+\end{lstlisting}
+
+ative o ambiente que contém o PYTHIA antes de executar o simulador.
+
+\subsection{Geant4 não encontrado}
+
+Confirme \texttt{Geant4\_DIR}, \texttt{CMAKE\_PREFIX\_PATH} ou a existência de
+\texttt{geant4-config} no ambiente.
+
+\subsection{Arquivo de configuração inexistente}
+
+Confirme o caminho fornecido a \texttt{--config} ou ao primeiro argumento de
+\texttt{run.sh}.
+
+\subsection{Opção desconhecida}
+
+Se o programa informar:
+
+\begin{lstlisting}[style=shell]
+Opcao desconhecida
+\end{lstlisting}
+
+consulte:
+
+\begin{lstlisting}[style=shell]
+./build/pythia_geant --help
+\end{lstlisting}
+
+e verifique se o parâmetro pretendido ainda é exclusivo do arquivo
+\texttt{.conf}.
+
+\subsection{Número de threads maior que o suportado}
+
+Se o Geant4 não tiver sido compilado com multithreading, apenas
+\texttt{--threads 1} é permitido.
+
+\section{Receita operacional recomendada}
+
+Para uma nova produção minimum-bias:
+
+\begin{enumerate}
+  \item escolha o arquivo-base, normalmente
+        \texttt{config/production.conf};
+  \item escolha número de eventos;
+  \item escolha \(\mu\);
+  \item escolha número de threads;
+  \item escolha seed;
+  \item escolha um nome de saída descritivo;
+  \item execute o dry run;
+  \item confira a configuração impressa;
+  \item execute a produção;
+  \item preserve ROOT, manifesto, commit e comando utilizado.
+\end{enumerate}
+
+Exemplo de dry run:
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 10000 \
+    --mu 50 \
+    --threads 2 \
+    --seed 9512 \
+    --output outputs/minbias_mu50_nev10000_t2_seed9512.root \
+    --dry-run
+\end{lstlisting}
+
+Exemplo de produção:
+
+\begin{lstlisting}[style=shell]
+./run.sh config/production.conf \
+    --events 10000 \
+    --mu 50 \
+    --threads 2 \
+    --seed 9512 \
+    --output outputs/minbias_mu50_nev10000_t2_seed9512.root
+\end{lstlisting}
+
+\section{Resumo rápido}
+
+\begin{lstlisting}[style=shell]
+# Ajuda
+./build/pythia_geant --help
+
+# Dry run
+./run.sh config/production.conf \
+    --events 100 \
+    --mu 1 \
+    --threads 2 \
+    --seed 9512 \
+    --output outputs/teste.root \
+    --dry-run
+
+# Producao
+./run.sh config/production.conf \
+    --events 100 \
+    --mu 1 \
+    --threads 2 \
+    --seed 9512 \
+    --output outputs/teste.root
+\end{lstlisting}
+
+\section{Escopo e evolução da interface}
+
+Este guia descreve a interface efetivamente disponível no repositório no
+fechamento do Ciclo 9.
+
+Uma evolução planejada é ampliar as sobrescritas pela linha de comando para que
+parâmetros hoje exclusivos do arquivo \texttt{.conf} também possam ser
+controlados explicitamente pela CLI.
+
+Até que essa extensão esteja implementada e validada, este documento distingue
+deliberadamente entre:
+
+\begin{itemize}
+  \item opções que realmente existem na CLI;
+  \item parâmetros que devem permanecer no arquivo \texttt{.conf}.
+\end{itemize}
+
+Essa distinção evita comandos inválidos e torna as campanhas mais auditáveis.
+
+\section{Referência do projeto}
+
+Repositório:
+
+\begin{center}
+\url{https://github.com/ncevidanes/MinBias-Pythia-Geant4}
+\end{center}
+
+Ao relatar resultados, registre sempre o commit do repositório e a configuração
+efetiva utilizada.
+
+\end{document}
