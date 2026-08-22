@@ -336,3 +336,9 @@ documentado. Nenhum arquivo-fonte do Lorenzetti é incluído literalmente.
 PYTHIA, Geant4, ROOT e CMake são projetos independentes, não são incorporados
 a este repositório e permanecem sujeitos às respectivas licenças. A análise
 detalhada está em `docs/LICENSE_AUDIT.md`.
+
+## Guia de execução do simulador
+
+Para configurar e executar o simulador pela linha de comando, consulte o guia LaTeX completo:
+
+- [Guia de configuração e execução](docs/user-guide/guia_execucao_simulador.tex)
