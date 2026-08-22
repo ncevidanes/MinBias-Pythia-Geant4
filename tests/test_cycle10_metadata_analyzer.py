@@ -442,6 +442,50 @@ class Cycle10MetadataAnalyzerTest(unittest.TestCase):
             metadata,
         )
 
+    def test_schema3_repeatability_allows_operational_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            left = Path(temporary) / "left.root"
+            right = Path(temporary) / "right.root"
+
+            write_fixture(
+                left,
+                threads=1,
+                output_file="left.root",
+                normalized_config="threads=1;output=left",
+            )
+
+            write_fixture(
+                right,
+                threads=1,
+                output_file="right.root",
+                normalized_config="threads=1;output=right",
+            )
+
+            comparison = ANALYZER.compare_root_files(
+                left,
+                right,
+            )
+
+            evaluation = ANALYZER.evaluate_comparison(
+                "repeatability",
+                comparison,
+            )
+
+        self.assertTrue(comparison["scientific_equal"])
+        self.assertFalse(comparison["metadata_equal"])
+        self.assertTrue(evaluation["accepted"])
+        self.assertTrue(
+            evaluation["metadata_policy_equal"]
+        )
+        self.assertEqual(
+            evaluation["unexpected_metadata_fields"],
+            [],
+        )
+        self.assertEqual(
+            evaluation["classification"],
+            "PASS",
+        )
+
     def test_schema3_cross_thread_allows_operational_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
             left = Path(temporary) / "left.root"
