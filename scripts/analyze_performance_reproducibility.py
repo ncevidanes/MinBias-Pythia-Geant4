@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import math
+import struct
 import sys
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -104,15 +105,28 @@ class AnalysisError(RuntimeError):
     """Controlled Cycle 9 canonical-analysis failure."""
 
 
+def canonical_float(
+    value: float,
+) -> tuple[str, str]:
+    if math.isfinite(value):
+        return ("f", value.hex())
+
+    # Preserve the exact IEEE-754 bit pattern for NaN and infinities.
+    # This allows canonical comparison without inventing a finite value
+    # or collapsing distinct non-finite representations.
+    return (
+        "nf",
+        struct.pack(">d", value).hex(),
+    )
+
+
 def canonical_scalar(value: Any) -> tuple[str, Any]:
     if isinstance(value, bool):
         return ("i", int(value))
     if isinstance(value, int):
         return ("i", value)
     if isinstance(value, float):
-        if not math.isfinite(value):
-            raise AnalysisError(f"non-finite floating-point value: {value!r}")
-        return ("f", value.hex())
+        return canonical_float(value)
     if isinstance(value, str):
         return ("s", value)
     try:
@@ -124,10 +138,10 @@ def canonical_scalar(value: Any) -> tuple[str, Any]:
     try:
         floating = float(value)
     except (TypeError, ValueError, OverflowError) as error:
-        raise AnalysisError(f"unsupported scalar value: {value!r}") from error
-    if not math.isfinite(floating):
-        raise AnalysisError(f"non-finite floating-point value: {floating!r}")
-    return ("f", floating.hex())
+        raise AnalysisError(
+            f"unsupported scalar value: {value!r}"
+        ) from error
+    return canonical_float(floating)
 
 
 def canonical_row(row: Mapping[str, Any], fields: Sequence[str]) -> str:
@@ -323,16 +337,25 @@ def read_branch_scalar(tree: Any, field: str) -> Any:
 
     leaf = branch.GetLeaf(field)
     if leaf is not None:
+        leaf_class = str(leaf.ClassName())
         type_name = str(leaf.GetTypeName())
+
+        if leaf_class == "TLeafC":
+            return str(leaf.GetValueString())
+
         if "string" in type_name.lower():
             return str(getattr(tree, field))
+
         value = leaf.GetValue()
+
         if type_name in INTEGER_LEAF_TYPES:
             return int(value)
         if type_name in FLOAT_LEAF_TYPES:
             return float(value)
+
         raise AnalysisError(
-            f"{tree.GetName()}.{field}: unsupported leaf type {type_name}"
+            f"{tree.GetName()}.{field}: "
+            f"unsupported leaf type {type_name}"
         )
 
     class_name = str(branch.GetClassName())

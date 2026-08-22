@@ -277,6 +277,113 @@ def write_fixture(
 
 class Cycle10MetadataAnalyzerTest(unittest.TestCase):
 
+    def test_tleafc_string_is_read_as_full_string(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "tleafc.root"
+
+            root_file = ROOT.TFile(
+                str(path),
+                "RECREATE",
+            )
+
+            tree = ROOT.TTree(
+                "metadata",
+                "metadata",
+            )
+
+            capacity = 128
+            holder = array("b", [0] * capacity)
+
+            tree.Branch(
+                "seed_policy",
+                holder,
+                "seed_policy/C",
+            )
+
+            encoded = b"event-stable-v1"
+
+            for index, byte in enumerate(encoded):
+                holder[index] = byte
+
+            holder[len(encoded)] = 0
+
+            tree.Fill()
+            tree.Write()
+            root_file.Close()
+
+            root_file = ROOT.TFile.Open(
+                str(path),
+                "READ",
+            )
+
+            tree = root_file.Get("metadata")
+            self.assertGreater(tree.GetEntry(0), 0)
+
+            leaf = tree.GetBranch(
+                "seed_policy"
+            ).GetLeaf("seed_policy")
+
+            self.assertEqual(
+                str(leaf.ClassName()),
+                "TLeafC",
+            )
+
+            self.assertEqual(
+                ANALYZER.read_branch_scalar(
+                    tree,
+                    "seed_policy",
+                ),
+                "event-stable-v1",
+            )
+
+            root_file.Close()
+
+    def test_nonfinite_float_is_exactly_canonicalized(self):
+        positive_infinity = ANALYZER.canonical_scalar(
+            float("inf")
+        )
+        negative_infinity = ANALYZER.canonical_scalar(
+            float("-inf")
+        )
+        nan_value = ANALYZER.canonical_scalar(
+            float("nan")
+        )
+
+        self.assertEqual(
+            positive_infinity,
+            ("nf", "7ff0000000000000"),
+        )
+
+        self.assertEqual(
+            negative_infinity,
+            ("nf", "fff0000000000000"),
+        )
+
+        self.assertEqual(
+            nan_value[0],
+            "nf",
+        )
+
+        self.assertEqual(
+            len(nan_value[1]),
+            16,
+        )
+
+        self.assertNotEqual(
+            positive_infinity,
+            negative_infinity,
+        )
+
+        digest = ANALYZER.digest_rows(
+            [{"eta": float("inf")}],
+            ("eta",),
+        )
+
+        self.assertEqual(
+            len(digest),
+            64,
+        )
+
     def test_schema3_is_read_with_event_stable_policy(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "schema3.root"
