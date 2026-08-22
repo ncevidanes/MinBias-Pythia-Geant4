@@ -397,6 +397,12 @@ if(BUILD_TESTING)
     COMMAND "${Python3_EXECUTABLE}" -B
       "${PROJECT_SOURCE_DIR}/tests/test_performance_reproducibility_analyzer.py"
   )
+
+  add_test(
+    NAME performance_reproducibility_executor
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_performance_reproducibility_executor.py"
+  )
 endif()
 
 install(TARGETS pythia_geant RUNTIME DESTINATION bin)
