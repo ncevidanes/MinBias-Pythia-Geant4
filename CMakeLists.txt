@@ -283,6 +283,34 @@ if(BUILD_TESTING)
   )
 
   add_executable(
+    pythia_reseed_test
+    tests/PythiaReseedTest.cc
+  )
+  target_include_directories(
+    pythia_reseed_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    pythia_reseed_test
+    PRIVATE
+      ${PYTHIA8_CXXFLAGS}
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  target_link_libraries(
+    pythia_reseed_test
+    PRIVATE
+      ${PYTHIA8_LIBS}
+  )
+  add_test(
+    NAME pythia_reseed
+    COMMAND pythia_reseed_test
+      "${PROJECT_SOURCE_DIR}/config/pythia_minbias.cmnd"
+  )
+
+  add_executable(
     configuration_test
     tests/ConfigurationTest.cc
     src/Configuration.cc

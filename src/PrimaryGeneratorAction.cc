@@ -15,7 +15,6 @@
 #include "G4PrimaryParticle.hh"
 #include "G4PrimaryVertex.hh"
 #include "G4SystemOfUnits.hh"
-#include "G4Threading.hh"
 
 #include <algorithm>
 #include <cmath>
@@ -29,12 +28,16 @@ namespace pg {
 
 PrimaryGeneratorAction::PrimaryGeneratorAction(Configuration configuration)
     : configuration_(std::move(configuration)) {
-  const int seed = PythiaSeedForWorker(
-      configuration_.seedBase,
-      G4Threading::G4GetThreadId());
   if (configuration_.generatorMode != "pythia") {
     return;
   }
+
+  const int initializationSeed =
+      PythiaSeedForStableTuple(
+          static_cast<std::uint64_t>(configuration_.seedBase),
+          0ULL,
+          0ULL,
+          SeedStream::kPythiaInitialization);
 
   pythia_ = std::make_unique<Pythia8::Pythia>();
   if (!pythia_->readFile(configuration_.pythiaConfig.string())) {
@@ -45,7 +48,8 @@ PrimaryGeneratorAction::PrimaryGeneratorAction(Configuration configuration)
   }
 
   pythia_->readString("Random:setSeed = on");
-  pythia_->readString("Random:seed = " + std::to_string(seed));
+  pythia_->readString(
+      "Random:seed = " + std::to_string(initializationSeed));
 
   if (!pythia_->init()) {
     G4Exception("PrimaryGeneratorAction", "PythiaInit", FatalException,
@@ -136,6 +140,15 @@ void PrimaryGeneratorAction::GeneratePythiaPrimaries(G4Event* event) {
 
   for (int subevent = 0; subevent < state.requestedInteractions;
        ++subevent) {
+    const int pythiaSeed =
+        PythiaSeedForStableTuple(
+            static_cast<std::uint64_t>(configuration_.seedBase),
+            static_cast<std::uint64_t>(state.bcid),
+            static_cast<std::uint64_t>(subevent),
+            SeedStream::kPythiaSubevent);
+
+    pythia_->rndm.init(pythiaSeed);
+
     if (!pythia_->next()) {
       ++state.generationFailures;
       continue;
