@@ -85,7 +85,17 @@ def valid_content(run):
 
 
 def comparison(equal, metadata_equal=True):
-    def tree(tree_equal):
+    def tree(tree_equal, *, metadata=False):
+        if tree_equal:
+            differing_fields = {}
+        elif metadata:
+            differing_fields = {
+                "output_file": 1,
+                "normalized_config": 1,
+            }
+        else:
+            differing_fields = {"total_edep_mev": 1}
+
         return {
             "equal": tree_equal,
             "left_entries": 100,
@@ -93,8 +103,8 @@ def comparison(equal, metadata_equal=True):
             "only_left_keys": 0,
             "only_right_keys": 0,
             "differing_rows": 0 if tree_equal else 1,
-            "differing_values": 0 if tree_equal else 1,
-            "differing_fields": {} if tree_equal else {"total_edep_mev": 1},
+            "differing_values": 0 if tree_equal else len(differing_fields),
+            "differing_fields": differing_fields,
             "max_abs_difference": 0.0 if tree_equal else 0.25,
             "max_abs_field": None if tree_equal else "total_edep_mev",
             "max_rel_difference": 0.0 if tree_equal else 0.01,
@@ -103,7 +113,10 @@ def comparison(equal, metadata_equal=True):
             "left_digest": "a" * 64,
             "right_digest": ("a" if tree_equal else "b") * 64,
         }
+
     return {
+        "left_metadata_schema_version": 3,
+        "right_metadata_schema_version": 3,
         "raw_sha256_equal": False,
         "scientific_equal": equal,
         "metadata_equal": metadata_equal,
@@ -118,7 +131,7 @@ def comparison(equal, metadata_equal=True):
             "events": tree(equal),
             "hits": tree(equal),
             "generator": tree(equal),
-            "metadata": tree(metadata_equal),
+            "metadata": tree(metadata_equal, metadata=True),
         },
     }
 
@@ -228,14 +241,45 @@ class PerformanceReproducibilityExecutorTest(unittest.TestCase):
                 ):
                     EXECUTOR.reproducibility_report(staging)
 
-    def test_two_thread_difference_is_reported(self):
+    def test_schema3_operational_metadata_is_accepted(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with mock.patch.object(
+                EXECUTOR.ANALYZER,
+                "compare_root_files",
+                return_value=comparison(True, False),
+            ):
+                result = EXECUTOR.reproducibility_report(
+                    Path(temporary)
+                )
+
+        self.assertEqual(
+            result["one_thread_repeatability"]["classification"],
+            "PASS",
+        )
+        self.assertEqual(
+            result["two_thread_repeatability"]["classification"],
+            "PASS",
+        )
+        self.assertTrue(
+            result["two_thread_repeatability"]["exact_repeatability"]
+        )
+        self.assertEqual(
+            result["cross_thread"]["repetition_1"]["classification"],
+            "IDENTICAL",
+        )
+        self.assertEqual(
+            result["cross_thread"]["repetition_2"]["classification"],
+            "IDENTICAL",
+        )
+
+    def test_two_thread_science_difference_is_rejected(self):
         def fake_compare(left, right):
             names = (Path(left).parent.name, Path(right).parent.name)
             if names == ("repro-t1-r1", "repro-t1-r2"):
-                return comparison(True, True)
+                return comparison(True, False)
             if names == ("repro-t2-r1", "repro-t2-r2"):
-                return comparison(False, True)
-            return comparison(False, False)
+                return comparison(False, False)
+            return comparison(True, False)
 
         with tempfile.TemporaryDirectory() as temporary:
             with mock.patch.object(
@@ -243,16 +287,42 @@ class PerformanceReproducibilityExecutorTest(unittest.TestCase):
                 "compare_root_files",
                 side_effect=fake_compare,
             ):
-                result = EXECUTOR.reproducibility_report(Path(temporary))
-        self.assertEqual(
-            result["two_thread_repeatability"]["classification"],
-            "MEASURED_DIFFERENCE_REQUIRES_DOCUMENTATION",
-        )
-        self.assertFalse(result["two_thread_repeatability"]["exact_repeatability"])
-        self.assertEqual(
-            result["cross_thread"]["repetition_1"]["classification"],
-            "MEASURED_DIFFERENCE",
-        )
+                with self.assertRaisesRegex(
+                    EXECUTOR.CampaignError,
+                    "two-thread repeatability failed",
+                ):
+                    EXECUTOR.reproducibility_report(
+                        Path(temporary)
+                    )
+
+    def test_cross_thread_science_difference_is_rejected(self):
+        def fake_compare(left, right):
+            names = (Path(left).parent.name, Path(right).parent.name)
+
+            if names in {
+                ("repro-t1-r1", "repro-t1-r2"),
+                ("repro-t2-r1", "repro-t2-r2"),
+            }:
+                return comparison(True, False)
+
+            if names == ("repro-t1-r1", "repro-t2-r1"):
+                return comparison(False, False)
+
+            return comparison(True, False)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            with mock.patch.object(
+                EXECUTOR.ANALYZER,
+                "compare_root_files",
+                side_effect=fake_compare,
+            ):
+                with self.assertRaisesRegex(
+                    EXECUTOR.CampaignError,
+                    "cross-thread reproducibility failed for repetition 1",
+                ):
+                    EXECUTOR.reproducibility_report(
+                        Path(temporary)
+                    )
 
     def test_dry_run_main_never_calls_transport(self):
         calls = []

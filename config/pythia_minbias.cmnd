@@ -14,6 +14,7 @@ Next:numberShowInfo = 1
 Next:numberShowProcess = 0
 Next:numberShowEvent = 0
 
-! A semente é sobrescrita por trabalhador a partir de seed_base.
+! A inicialização recebe uma seed determinística derivada de seed_base.
+! Cada subevento é resemeado por seed_base, BCID e índice do subevento.
 Random:setSeed = on
 

@@ -262,6 +262,55 @@ if(BUILD_TESTING)
   add_test(NAME seed_policy COMMAND seed_policy_test)
 
   add_executable(
+    stable_random_test
+    tests/StableRandomTest.cc
+  )
+  target_include_directories(
+    stable_random_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    stable_random_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  add_test(
+    NAME stable_random
+    COMMAND stable_random_test
+  )
+
+  add_executable(
+    pythia_reseed_test
+    tests/PythiaReseedTest.cc
+  )
+  target_include_directories(
+    pythia_reseed_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    pythia_reseed_test
+    PRIVATE
+      ${PYTHIA8_CXXFLAGS}
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  target_link_libraries(
+    pythia_reseed_test
+    PRIVATE
+      ${PYTHIA8_LIBS}
+  )
+  add_test(
+    NAME pythia_reseed
+    COMMAND pythia_reseed_test
+      "${PROJECT_SOURCE_DIR}/config/pythia_minbias.cmnd"
+  )
+
+  add_executable(
     configuration_test
     tests/ConfigurationTest.cc
     src/Configuration.cc
@@ -396,6 +445,12 @@ if(BUILD_TESTING)
     NAME performance_reproducibility_analyzer
     COMMAND "${Python3_EXECUTABLE}" -B
       "${PROJECT_SOURCE_DIR}/tests/test_performance_reproducibility_analyzer.py"
+  )
+
+  add_test(
+    NAME cycle10_metadata_analyzer
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_cycle10_metadata_analyzer.py"
   )
 
   add_test(

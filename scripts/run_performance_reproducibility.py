@@ -886,74 +886,104 @@ def compare_repro_pair(
     staging_dir: Path,
     left_name: str,
     right_name: str,
+    mode: str,
 ) -> dict[str, Any]:
     left_run = next(run for run in REPRO_RUNS if run.name == left_name)
     right_run = next(run for run in REPRO_RUNS if run.name == right_name)
     left_root = run_root_path(staging_dir, left_run)
     right_root = run_root_path(staging_dir, right_run)
     comparison = ANALYZER.compare_root_files(left_root, right_root)
-    return compact_comparison(comparison)
+    evaluation = ANALYZER.evaluate_comparison(mode, comparison)
+    return {
+        "comparison": compact_comparison(comparison),
+        "evaluation": dict(evaluation),
+    }
 
 
 def reproducibility_report(staging_dir: Path) -> dict[str, Any]:
-    t1 = compare_repro_pair(
+    t1_result = compare_repro_pair(
         staging_dir,
         "repro-t1-r1",
         "repro-t1-r2",
+        "repeatability",
     )
-    if not t1["canonical_equal"]:
+    t1 = t1_result["comparison"]
+    t1_evaluation = t1_result["evaluation"]
+
+    if not t1_evaluation["accepted"]:
         raise CampaignError(
-            "one-thread repeatability failed: canonical content differs"
+            "one-thread repeatability failed: "
+            "schema-aware comparison rejected"
         )
 
-    t2 = compare_repro_pair(
+    t2_result = compare_repro_pair(
         staging_dir,
         "repro-t2-r1",
         "repro-t2-r2",
+        "repeatability",
     )
+    t2 = t2_result["comparison"]
+    t2_evaluation = t2_result["evaluation"]
 
-    cross_r1 = compare_repro_pair(
+    if not t2_evaluation["accepted"]:
+        raise CampaignError(
+            "two-thread repeatability failed: "
+            "schema-aware comparison rejected"
+        )
+
+    cross_r1_result = compare_repro_pair(
         staging_dir,
         "repro-t1-r1",
         "repro-t2-r1",
+        "cross-thread",
     )
-    cross_r2 = compare_repro_pair(
+    cross_r1 = cross_r1_result["comparison"]
+    cross_r1_evaluation = cross_r1_result["evaluation"]
+
+    if not cross_r1_evaluation["accepted"]:
+        raise CampaignError(
+            "cross-thread reproducibility failed for repetition 1: "
+            "schema-aware comparison rejected"
+        )
+
+    cross_r2_result = compare_repro_pair(
         staging_dir,
         "repro-t1-r2",
         "repro-t2-r2",
+        "cross-thread",
     )
+    cross_r2 = cross_r2_result["comparison"]
+    cross_r2_evaluation = cross_r2_result["evaluation"]
+
+    if not cross_r2_evaluation["accepted"]:
+        raise CampaignError(
+            "cross-thread reproducibility failed for repetition 2: "
+            "schema-aware comparison rejected"
+        )
 
     return {
         "schema_version": 1,
         "one_thread_repeatability": {
-            "classification": "PASS",
+            "classification": t1_evaluation["classification"],
+            "evaluation": t1_evaluation,
             "comparison": t1,
         },
         "two_thread_repeatability": {
-            "classification": (
-                "PASS"
-                if t2["canonical_equal"]
-                else "MEASURED_DIFFERENCE_REQUIRES_DOCUMENTATION"
-            ),
-            "exact_repeatability": bool(t2["canonical_equal"]),
+            "classification": t2_evaluation["classification"],
+            "exact_repeatability": bool(t2_evaluation["accepted"]),
+            "evaluation": t2_evaluation,
             "comparison": t2,
         },
         "cross_thread": {
-            "acceptance_policy": "REPORT_NOT_EVENT_IDENTITY_GATE",
+            "acceptance_policy": "SCHEMA_AWARE_EVENT_STABLE_GATE",
             "repetition_1": {
-                "classification": (
-                    "IDENTICAL"
-                    if cross_r1["scientific_equal"]
-                    else "MEASURED_DIFFERENCE"
-                ),
+                "classification": cross_r1_evaluation["classification"],
+                "evaluation": cross_r1_evaluation,
                 "comparison": cross_r1,
             },
             "repetition_2": {
-                "classification": (
-                    "IDENTICAL"
-                    if cross_r2["scientific_equal"]
-                    else "MEASURED_DIFFERENCE"
-                ),
+                "classification": cross_r2_evaluation["classification"],
+                "evaluation": cross_r2_evaluation,
                 "comparison": cross_r2,
             },
         },
