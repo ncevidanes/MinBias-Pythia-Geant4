@@ -3,6 +3,7 @@
 
 #include "SeedPolicy.hh"
 
+#include <cmath>
 #include <cstdint>
 #include <random>
 #include <stdexcept>
@@ -34,6 +35,15 @@ inline int DrawStablePoisson(
     const double mean,
     const std::uint64_t seedBase,
     const std::uint64_t bcid) {
+  if (!std::isfinite(mean) || mean < 0.0) {
+    throw std::invalid_argument(
+        "stable Poisson mean must be finite and non-negative");
+  }
+
+  if (mean == 0.0) {
+    return 0;
+  }
+
   auto engine = MakeStableRandomEngine(
       seedBase,
       bcid,
