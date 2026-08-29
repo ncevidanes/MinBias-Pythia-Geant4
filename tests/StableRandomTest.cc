@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -65,6 +66,34 @@ void CheckPoissonDeterminism() {
           9512ULL,
           42ULL) == 0,
       "Zero-mean Poisson draw was not zero");
+
+  bool negativeMeanRejected = false;
+  try {
+    (void)pg::DrawStablePoisson(
+        -1.0,
+        9512ULL,
+        42ULL);
+  } catch (const std::invalid_argument&) {
+    negativeMeanRejected = true;
+  }
+
+  Require(
+      negativeMeanRejected,
+      "Negative Poisson mean was not rejected");
+
+  bool nonFiniteMeanRejected = false;
+  try {
+    (void)pg::DrawStablePoisson(
+        std::numeric_limits<double>::infinity(),
+        9512ULL,
+        42ULL);
+  } catch (const std::invalid_argument&) {
+    nonFiniteMeanRejected = true;
+  }
+
+  Require(
+      nonFiniteMeanRejected,
+      "Non-finite Poisson mean was not rejected");
 }
 
 void CheckZeroSigma() {
