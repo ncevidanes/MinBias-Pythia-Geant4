@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+name: Lightweight CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  lightweight:
+    name: C++17 and Python lightweight tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure lightweight test project
+        run: >
+          cmake
+          -S ci/lightweight
+          -B build-lightweight
+          -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build lightweight C++ tests
+        run: >
+          cmake
+          --build build-lightweight
+          --parallel 2
+
+      - name: Run lightweight test suite
+        run: >
+          ctest
+          --test-dir build-lightweight
+          --output-on-failure
