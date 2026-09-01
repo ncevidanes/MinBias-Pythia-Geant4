@@ -262,6 +262,49 @@ if(BUILD_TESTING)
   add_test(NAME seed_policy COMMAND seed_policy_test)
 
   add_executable(
+    transport_seed_policy_test
+    tests/TransportSeedPolicyTest.cc
+  )
+  target_include_directories(
+    transport_seed_policy_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    transport_seed_policy_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  add_test(
+    NAME transport_seed_policy
+    COMMAND transport_seed_policy_test
+  )
+
+  add_executable(
+    event_state_transport_seed_test
+    tests/EventStateTransportSeedTest.cc
+    src/EventState.cc
+  )
+  target_include_directories(
+    event_state_transport_seed_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    event_state_transport_seed_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  add_test(
+    NAME event_state_transport_seed
+    COMMAND event_state_transport_seed_test
+  )
+
+  add_executable(
     stable_random_test
     tests/StableRandomTest.cc
   )
@@ -448,9 +491,27 @@ if(BUILD_TESTING)
   )
 
   add_test(
+    NAME partition_stability_analyzer
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_partition_stability_analyzer.py"
+  )
+
+  add_test(
+    NAME partition_root_adapter
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_partition_root_adapter.py"
+  )
+
+  add_test(
     NAME cycle10_metadata_analyzer
     COMMAND "${Python3_EXECUTABLE}" -B
       "${PROJECT_SOURCE_DIR}/tests/test_cycle10_metadata_analyzer.py"
+  )
+
+  add_test(
+    NAME cycle11_schema4_analyzer
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_cycle11_schema4_analyzer.py"
   )
 
   add_test(

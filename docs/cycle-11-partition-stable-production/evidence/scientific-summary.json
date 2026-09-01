@@ -1,0 +1,42 @@
+{
+  "artifact_counts": {
+    "fixed_schema4_matrix": 7,
+    "historical_schema3": 3,
+    "poisson_schema4_matrix": 9,
+    "post_correction_schema4_pilot": 3,
+    "total": 22
+  },
+  "benchmark_executed": false,
+  "cycle": 11,
+  "cycle_complete": false,
+  "root_schema_version": 4,
+  "scientific_closeout": "PASS",
+  "scientific_identity": {
+    "global_event_identity": "bcid",
+    "primary_seed_policy": "event-stable-v1",
+    "transport_reseed_scope": "event-before-tracking",
+    "transport_seed_identity": "bcid",
+    "transport_seed_max": 2147483646,
+    "transport_seed_mixer": "splitmix64-v1",
+    "transport_seed_policy": "event-stable-v1",
+    "transport_seed_stream": "transport-event"
+  },
+  "validation": {
+    "duplicate_bcid_rejection": "PASS",
+    "exact_rerun": "PASS",
+    "full_partition_stability": "PASS",
+    "gap_rejection": "PASS",
+    "mixed_thread_topologies": "PASS",
+    "monolithic_1t_vs_2t": "PASS",
+    "overlap_rejection": "PASS",
+    "partition_all_2t": "PASS",
+    "poisson_partition_matrix": "PASS",
+    "post_correction_pilot": "PASS",
+    "primary_partition_stability": "PASS",
+    "reverse_job_order": "PASS",
+    "scientific_partition_matrix": "PASS",
+    "seed_sensitivity": "PASS",
+    "thread_stability": "PASS",
+    "transport_partition_stability": "PASS"
+  }
+}

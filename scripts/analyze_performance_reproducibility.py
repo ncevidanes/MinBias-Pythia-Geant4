@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 
-EVENT_FIELDS = (
+EVENT_FIELDS_V3 = (
     "run",
     "event",
     "bcid",
@@ -31,6 +31,14 @@ EVENT_FIELDS = (
     "rejected_outside_eta_acceptance",
     "unlineaged_steps",
     "segmentation_failures",
+)
+
+# Historical event-tree contract used by schemas 2 and 3.
+EVENT_FIELDS = EVENT_FIELDS_V3
+
+# Schema 4 appends the actual BCID-stable Geant4 transport seed.
+EVENT_FIELDS_V4 = EVENT_FIELDS_V3 + (
+    "geant4_transport_seed",
 )
 
 HIT_FIELDS = (
@@ -266,6 +274,15 @@ METADATA_FIELDS_V3 = (
     "single_particle_phi",
 )
 
+METADATA_FIELDS_V4 = METADATA_FIELDS_V3 + (
+    "geant4_transport_seed_policy",
+    "geant4_transport_seed_identity",
+    "geant4_transport_seed_mixer",
+    "geant4_transport_seed_stream",
+    "geant4_transport_seed_max",
+    "geant4_transport_reseed_scope",
+)
+
 # Compatibility alias for historical Cycle 9 fixture builders.
 METADATA_FIELDS = METADATA_FIELDS_V2
 
@@ -384,6 +401,20 @@ def metadata_schema_version(tree: Any) -> int:
     return int(read_branch_scalar(tree, "schema_version"))
 
 
+def event_fields_for_schema(
+    schema_version: int,
+) -> tuple[str, ...]:
+    if schema_version in (2, 3):
+        return EVENT_FIELDS_V3
+    if schema_version == 4:
+        return EVENT_FIELDS_V4
+
+    raise AnalysisError(
+        "unsupported ROOT event schema_version="
+        + str(schema_version)
+    )
+
+
 def metadata_fields_for_schema(
     schema_version: int,
 ) -> tuple[str, ...]:
@@ -391,6 +422,8 @@ def metadata_fields_for_schema(
         return METADATA_FIELDS_V2
     if schema_version == 3:
         return METADATA_FIELDS_V3
+    if schema_version == 4:
+        return METADATA_FIELDS_V4
 
     raise AnalysisError(
         "unsupported ROOT metadata schema_version="
@@ -636,42 +669,86 @@ def combine_tree_digests(
 def extract_root_content(path: Path) -> dict[str, Any]:
     path = path.resolve()
     if not path.is_file():
-        raise AnalysisError(f"ROOT file does not exist: {path}")
+        raise AnalysisError(
+            f"ROOT file does not exist: {path}"
+        )
 
     ROOT = import_root()
-    root_file = ROOT.TFile.Open(str(path), "READ")
+
+    root_file = ROOT.TFile.Open(
+        str(path),
+        "READ",
+    )
+
     if not root_file or root_file.IsZombie():
-        raise AnalysisError(f"cannot open ROOT file: {path}")
+        raise AnalysisError(
+            f"cannot open ROOT file: {path}"
+        )
 
     try:
-        rows_by_tree: dict[str, list[dict[str, Any]]] = {}
+        metadata_tree = root_file.Get(
+            "metadata"
+        )
+
+        if metadata_tree is None:
+            raise AnalysisError(
+                f"{path}: missing TTree metadata"
+            )
+
+        metadata_schema = metadata_schema_version(
+            metadata_tree
+        )
+
+        metadata_fields = metadata_fields_for_schema(
+            metadata_schema
+        )
+
+        event_fields = event_fields_for_schema(
+            metadata_schema
+        )
+
+        effective_tree_fields = {
+            "events": event_fields,
+            "hits": HIT_FIELDS,
+            "generator": GENERATOR_FIELDS,
+            "metadata": metadata_fields,
+        }
+
+        rows_by_tree: dict[
+            str,
+            list[dict[str, Any]],
+        ] = {}
+
         digests: dict[str, str] = {}
-        metadata_schema: int | None = None
-        metadata_fields: tuple[str, ...] | None = None
 
-        for tree_name, fields in TREE_FIELDS.items():
-            tree = root_file.Get(tree_name)
+        for (
+            tree_name,
+            effective_fields,
+        ) in effective_tree_fields.items():
+
+            tree = root_file.Get(
+                tree_name
+            )
+
             if tree is None:
-                raise AnalysisError(f"{path}: missing TTree {tree_name}")
-
-            effective_fields = fields
-            if tree_name == "metadata":
-                metadata_schema = metadata_schema_version(tree)
-                metadata_fields = metadata_fields_for_schema(
-                    metadata_schema
+                raise AnalysisError(
+                    f"{path}: missing TTree {tree_name}"
                 )
-                effective_fields = metadata_fields
 
-            rows = extract_tree_rows(tree, effective_fields)
-            rows_by_tree[tree_name] = rows
-            digests[tree_name] = digest_rows(
-                rows,
+            rows = extract_tree_rows(
+                tree,
                 effective_fields,
             )
 
-        if metadata_schema is None or metadata_fields is None:
-            raise AnalysisError(
-                "metadata schema version was not resolved"
+            rows_by_tree[
+                tree_name
+            ] = rows
+
+            digests[
+                tree_name
+            ] = digest_rows(
+                rows,
+                effective_fields,
             )
 
         return {
@@ -684,13 +761,18 @@ def extract_root_content(path: Path) -> dict[str, Any]:
                 digests,
                 SCIENTIFIC_TREES,
             ),
-            "metadata_digest": digests["metadata"],
-            "metadata_schema_version": metadata_schema,
+            "metadata_digest": digests[
+                "metadata"
+            ],
+            "metadata_schema_version": (
+                metadata_schema
+            ),
             "metadata_fields": metadata_fields,
+            "event_fields": event_fields,
         }
+
     finally:
         root_file.Close()
-
 
 def compare_root_files(left_path: Path, right_path: Path) -> dict[str, Any]:
     left = extract_root_content(left_path)
@@ -710,11 +792,16 @@ def compare_root_files(left_path: Path, right_path: Path) -> dict[str, Any]:
     tree_results: dict[str, dict[str, Any]] = {}
 
     for tree_name, fields in TREE_FIELDS.items():
-        effective_fields = (
-            left["metadata_fields"]
-            if tree_name == "metadata"
-            else fields
-        )
+        if tree_name == "metadata":
+            effective_fields = left[
+                "metadata_fields"
+            ]
+        elif tree_name == "events":
+            effective_fields = left[
+                "event_fields"
+            ]
+        else:
+            effective_fields = fields
 
         comparison = compare_tree_rows(
             left["rows"][tree_name],
