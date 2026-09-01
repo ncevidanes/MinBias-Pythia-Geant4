@@ -57,6 +57,7 @@ class EventState {
   int rejectedOutsideEtaAcceptance = 0;
   int unlineagedSteps = 0;
   int segmentationFailures = 0;
+  int geant4TransportSeed = 0;
   std::map<CellKey, CellDeposit> deposits;
 
  private:

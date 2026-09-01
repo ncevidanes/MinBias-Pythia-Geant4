@@ -1,0 +1,43 @@
+{
+  "acceptance": "PASS_WITH_TIMING_WARNING",
+  "benchmark_runs": 10,
+  "code_under_test_commit": "d5e708c94f5c872a4b8d1bbe81380a36737f551d",
+  "cycle": 11,
+  "cycle10_reference": {
+    "median_wall_1t_seconds": 298.32,
+    "median_wall_2t_seconds": 191.2,
+    "parallel_efficiency_2t": 0.780125523,
+    "speedup_2t": 1.560251046
+  },
+  "performance": {
+    "cv_1t": 0.2853245839716047,
+    "cv_2t": 0.2083406432701033,
+    "median_wall_1t_seconds": 486.3,
+    "median_wall_2t_seconds": 198.07999999999998,
+    "parallel_efficiency_2t": 1.2275343295638128,
+    "speedup_2t": 2.4550686591276256,
+    "stable_scaling_claim_accepted": false,
+    "status": "WARNING",
+    "systematic_regression_proven": false,
+    "transport_rng_overhead_quantified": false,
+    "warnings": [
+      "TIMING_CV_ABOVE_20_PERCENT_THREADS_1",
+      "TIMING_CV_ABOVE_20_PERCENT_THREADS_2"
+    ]
+  },
+  "performance_runs": 6,
+  "reproducibility_runs": 4,
+  "scientific_reproducibility": {
+    "cross_thread_repetition_1": "IDENTICAL",
+    "cross_thread_repetition_2": "IDENTICAL",
+    "generator_audit_exercised": false,
+    "generator_entries": 0,
+    "one_thread_repeatability": "PASS",
+    "scientific_equal": true,
+    "status": "PASS",
+    "two_thread_exact_repeatability": true,
+    "two_thread_repeatability": "PASS"
+  },
+  "seed_base": 9512,
+  "stage": "11.6F"
+}

@@ -60,6 +60,7 @@ void RootOutput::Book() {
   analysis->CreateNtupleIColumn("rejected_outside_eta_acceptance");
   analysis->CreateNtupleIColumn("unlineaged_steps");
   analysis->CreateNtupleIColumn("segmentation_failures");
+  analysis->CreateNtupleIColumn("geant4_transport_seed");
   analysis->FinishNtuple();
 
   analysis->CreateNtuple("hits", "Cell deposits by subevent");
@@ -157,6 +158,18 @@ void RootOutput::Book() {
       "single_particle_kinetic_energy_gev");
   analysis->CreateNtupleDColumn("single_particle_eta");
   analysis->CreateNtupleDColumn("single_particle_phi");
+  analysis->CreateNtupleSColumn(
+      "geant4_transport_seed_policy");
+  analysis->CreateNtupleSColumn(
+      "geant4_transport_seed_identity");
+  analysis->CreateNtupleSColumn(
+      "geant4_transport_seed_mixer");
+  analysis->CreateNtupleSColumn(
+      "geant4_transport_seed_stream");
+  analysis->CreateNtupleIColumn(
+      "geant4_transport_seed_max");
+  analysis->CreateNtupleSColumn(
+      "geant4_transport_reseed_scope");
   analysis->FinishNtuple();
 }
 
@@ -268,6 +281,24 @@ void RootOutput::WriteMetadata(const Configuration& configuration) {
       kMetadataNtuple, 40, configuration.singleParticleEta);
   analysis->FillNtupleDColumn(
       kMetadataNtuple, 41, configuration.singleParticlePhi);
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 42,
+      std::string(kGeant4TransportSeedPolicyName));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 43,
+      std::string(kGeant4TransportSeedIdentityName));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 44,
+      std::string(kGeant4TransportSeedMixerName));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 45,
+      std::string(kGeant4TransportSeedStreamName));
+  analysis->FillNtupleIColumn(
+      kMetadataNtuple, 46,
+      static_cast<int>(kGeant4TransportMaximumSeed));
+  analysis->FillNtupleSColumn(
+      kMetadataNtuple, 47,
+      std::string(kGeant4TransportReseedScopeName));
   analysis->AddNtupleRow(kMetadataNtuple);
 }
 
@@ -351,6 +382,8 @@ void RootOutput::WriteEventAndHits(const Configuration& configuration) {
   analysis->FillNtupleIColumn(kEventsNtuple, 15, state.unlineagedSteps);
   analysis->FillNtupleIColumn(kEventsNtuple, 16,
                               state.segmentationFailures);
+  analysis->FillNtupleIColumn(kEventsNtuple, 17,
+                              state.geant4TransportSeed);
   analysis->AddNtupleRow(kEventsNtuple);
 
   for (const auto& [key, deposit] : state.deposits) {

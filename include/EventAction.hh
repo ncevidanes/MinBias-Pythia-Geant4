@@ -13,6 +13,7 @@ class EventAction final : public G4UserEventAction {
  public:
   explicit EventAction(Configuration configuration);
 
+  void BeginOfEventAction(const G4Event* event) override;
   void EndOfEventAction(const G4Event* event) override;
 
  private:

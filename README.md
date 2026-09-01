@@ -92,7 +92,7 @@ O arquivo contém quatro TTrees:
 
 | TTree | Conteúdo |
 |---|---|
-| `events` | metadados do bunch crossing, \(\mu\), interações sorteadas/geradas, falhas e contagens de partículas |
+| `events` | metadados do bunch crossing, \(\mu\), interações sorteadas/geradas, falhas, contagens de partículas e seed event-stable do transporte Geant4 |
 | `hits` | energia depositada por `(evento, subevento, célula)`, tempo médio ponderado por energia e maior contribuição individual |
 | `generator` | registro do gerador para auditoria; preenchido somente com `generator_audit = true` |
 | `metadata` | uma entrada por execução com configuração normalizada, política de sementes, versões e proveniência |
@@ -106,23 +106,28 @@ edep_mev, time_mean_ns, time_first_ns,
 leading_pdg, leading_track_id, leading_parent_id
 ```
 
-A TTree `metadata` possui uma entrada e 39 branches:
+A TTree `metadata` em `schema_version = 4` possui uma entrada e 48 branches:
 
 ```text
 schema_version, project_version, git_commit, git_describe,
 root_version, geant4_version, pythia_version,
 run, events, first_bcid, threads,
-seed_base, geant4_master_seed, pythia_seed_base,
-pythia_worker_seed_stride, pythia_seed_max,
+seed_base, geant4_master_seed,
+seed_policy, seed_identity, seed_mixer,
+pythia_initialization_seed, pythia_seed_max, pythia_reseed_scope,
 interaction_mode, mean_interactions, fixed_interactions,
 pythia_config, physics_list, production_cut_mm,
 beam_sigma_x_mm, beam_sigma_y_mm, beam_sigma_z_mm, beam_sigma_t_ns,
 max_abs_eta, transport_neutrinos, generator_audit, check_overlaps,
 print_every, config_file, output_file, normalized_config,
 generator_mode, single_particle_pdg,
-single_particle_kinetic_energy_gev,
-single_particle_eta, single_particle_phi
+single_particle_kinetic_energy_gev, single_particle_eta, single_particle_phi,
+geant4_transport_seed_policy, geant4_transport_seed_identity,
+geant4_transport_seed_mixer, geant4_transport_seed_stream,
+geant4_transport_seed_max, geant4_transport_reseed_scope
 ```
+
+A TTree `events` inclui `geant4_transport_seed`, o seed efetivamente instalado para o transporte Geant4 daquele BCID.
 
 Isso permite auditar o arquivo ROOT sem depender do diretório em que a
 simulação foi executada.
@@ -229,27 +234,26 @@ pareada das frações. Consulte o
 
 ## Reprodutibilidade
 
-O mestre do Geant4 e cada trabalhador do PYTHIA recebem sementes derivadas de
-`seed_base`. A política normaliza a semente do PYTHIA para seu intervalo válido
-e separa os trabalhadores com `pythia_worker_seed_stride = 104729`, respeitando
-`pythia_seed_max = 900000000`.
+A identidade científica global de um bunch crossing é `bcid`. O campo `event` é local à execução e pode reiniciar em zero entre jobs particionados.
 
-Uma execução é reprodutível quando são mantidos:
+A geração primária e o transporte Geant4 usam a política `event-stable-v1` com mixer `splitmix64-v1`.
 
-- versões do projeto, Git, ROOT, Geant4 e PYTHIA;
-- arquivo `.cmnd`;
-- configuração `.conf`;
-- número de threads;
-- `seed_base`;
-- lista de física.
+A geração PYTHIA deriva suas sementes de `(seed_base, bcid, subevent, stream)`.
+O transporte Geant4 deriva seu seed de `(seed_base, bcid, transport-event stream)`.
 
-O número de threads faz parte do contrato porque altera a distribuição dos
-eventos entre as instâncias PYTHIA dos trabalhadores.
+O seed de transporte é instalado em `EventAction::BeginOfEventAction`, depois da geração das primárias e antes do tracking.
 
-Além da TTree `metadata`, incorporada ao ROOT, o programa grava
-`<saida>.manifest.txt` como representação legível da configuração resolvida.
-Os dois registros são complementares: o manifesto facilita a inspeção no
-terminal e `metadata` mantém a proveniência junto aos dados.
+Worker, número de threads, job, ordem dos shards e `eventId` local não participam da identidade científica do RNG.
+
+O Ciclo 11 validou igualdade canônica de `events`, `hits` e `generator` para execução monolítica versus particionada, rerun exato, ordem inversa dos shards, 1T versus 2T, topologias mistas, interações fixas, Poisson e beam smearing não nulo.
+
+O contrato validado é `(seed_base, bcid, physics configuration) -> mesmo resultado científico canônico` dentro da matriz do Ciclo 11.
+
+Seeds-base distintas continuam produzindo realizações físicas distintas.
+
+As evidências estão em `docs/cycle-11-partition-stable-production/`.
+
+Além da TTree `metadata`, o programa grava `<saida>.manifest.txt` como representação legível da configuração resolvida.
 
 ## Inspeção rápida
 

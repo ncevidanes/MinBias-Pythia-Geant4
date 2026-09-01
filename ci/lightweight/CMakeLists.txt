@@ -114,6 +114,7 @@ set(
   test_neutrino_transport_stage83_preflight.py
   test_performance_reproducibility_executor.py
   test_performance_reproducibility_preflight.py
+  test_partition_stability_analyzer.py
   test_statistical_aggregator.py
   test_statistical_campaign_executor.py
 )

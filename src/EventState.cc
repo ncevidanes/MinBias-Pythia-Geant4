@@ -31,6 +31,7 @@ void EventState::Reset(const int eventIdValue, const int bcidValue) {
   rejectedOutsideEtaAcceptance = 0;
   unlineagedSteps = 0;
   segmentationFailures = 0;
+  geant4TransportSeed = 0;
   deposits.clear();
 }
 
