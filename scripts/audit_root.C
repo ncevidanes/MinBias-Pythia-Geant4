@@ -5,13 +5,18 @@
 #include <TObjArray.h>
 #include <TTree.h>
 
+#include "../include/RootSchema.hh"
+#include "../include/SeedPolicy.hh"
+
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <set>
 #include <string>
-#include <vector>
+#include <string_view>
 
 namespace {
 
@@ -37,15 +42,34 @@ TTree* RequireTree(TFile& file, const char* name, AuditResult& audit) {
   return tree;
 }
 
-void CheckBranches(TTree& tree, const std::vector<std::string>& expected,
-                   AuditResult& audit) {
+template <std::size_t Size>
+void CheckBranches(
+    TTree& tree,
+    const std::array<std::string_view, Size>& expected,
+    AuditResult& audit) {
   audit.Check(tree.GetListOfBranches()->GetEntries() ==
                   static_cast<int>(expected.size()),
               std::string(tree.GetName()) + " possui número inesperado de branches");
   for (const auto& name : expected) {
-    audit.Check(tree.GetBranch(name.c_str()) != nullptr,
-                std::string(tree.GetName()) + ": branch ausente: " + name);
+    audit.Check(tree.GetBranch(name.data()) != nullptr,
+                std::string(tree.GetName()) + ": branch ausente: " +
+                    std::string(name));
   }
+}
+
+int ReadSchemaVersion(TTree& metadata, AuditResult& audit) {
+  int schemaVersion = -1;
+  TBranch* branch = metadata.GetBranch("schema_version");
+  audit.Check(branch != nullptr, "metadata: branch ausente: schema_version");
+  if (!branch) {
+    return schemaVersion;
+  }
+
+  metadata.SetBranchAddress("schema_version", &schemaVersion);
+  audit.Check(metadata.GetEntry(0) > 0,
+              "metadata.schema_version não pôde ser lida");
+  metadata.ResetBranchAddresses();
+  return schemaVersion;
 }
 
 bool NearlyEqual(const double left, const double right) {
@@ -112,57 +136,44 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
     return;
   }
 
-  CheckBranches(*events,
-                {"run", "event", "bcid", "mu_configured",
-                 "n_interactions_requested", "n_interactions_generated",
-                 "generation_failures", "generator_particles",
-                 "transported_particles", "unknown_pdg_particles",
-                 "total_edep_mev", "rejected_not_final",
-                 "rejected_neutrino_disabled",
-                 "rejected_invisible_non_neutrino",
-                 "rejected_outside_eta_acceptance", "unlineaged_steps",
-                 "segmentation_failures"},
-                audit);
-  CheckBranches(*hits,
-                {"run", "event", "bcid", "subevent", "cell_id",
-                 "subdetector", "sampling", "side", "eta_index",
-                 "phi_index", "eta_center", "phi_center", "edep_mev",
-                 "time_mean_ns", "time_first_ns", "leading_pdg",
-                 "leading_track_id", "leading_parent_id", "steps"},
-                audit);
-  CheckBranches(*generator,
-                {"run", "event", "bcid", "subevent", "index", "pdg",
-                 "status", "mother1", "mother2", "daughter1", "daughter2",
-                 "is_final", "is_visible", "px_gev", "py_gev", "pz_gev",
-                 "energy_gev", "mass_gev", "eta", "phi", "x_prod_mm",
-                 "y_prod_mm", "z_prod_mm", "t_prod_mm_over_c",
-                 "accepted_for_transport", "rejection_code"},
-                audit);
-  CheckBranches(*metadata,
-                {"schema_version", "project_version", "git_commit",
-                 "git_describe", "root_version", "geant4_version",
-                 "pythia_version", "run", "events", "first_bcid", "threads",
-                 "seed_base", "geant4_master_seed", "pythia_seed_base",
-                 "pythia_worker_seed_stride", "pythia_seed_max",
-                 "interaction_mode", "mean_interactions",
-                 "fixed_interactions", "pythia_config", "physics_list",
-                 "production_cut_mm", "beam_sigma_x_mm", "beam_sigma_y_mm",
-                 "beam_sigma_z_mm", "beam_sigma_t_ns", "max_abs_eta",
-                 "transport_neutrinos", "generator_audit", "check_overlaps",
-                 "print_every", "config_file", "output_file",
-                 "normalized_config", "generator_mode",
-                 "single_particle_pdg",
-                 "single_particle_kinetic_energy_gev",
-                 "single_particle_eta", "single_particle_phi"},
-                audit);
-
   audit.Check(metadata->GetEntries() == 1,
               "metadata deve conter exatamente uma entrada");
+  if (metadata->GetEntries() != 1) {
+    std::cout << "AUDIT_RESULT=FAIL failures=" << audit.Failures() << '\n';
+    return;
+  }
 
-  int schemaVersion = -1;
+  const int schemaVersion = ReadSchemaVersion(*metadata, audit);
+  audit.Check(pg::root_schema::IsSupportedVersion(schemaVersion),
+              "schema_version suportada deve ser 2, 3 ou 4");
+  if (!pg::root_schema::IsSupportedVersion(schemaVersion)) {
+    std::cout << "AUDIT_RESULT=FAIL failures=" << audit.Failures() << '\n';
+    return;
+  }
+
+  if (pg::root_schema::HasEventTransportSeed(schemaVersion)) {
+    CheckBranches(*events, pg::root_schema::kEventBranchesV4, audit);
+  } else {
+    CheckBranches(*events, pg::root_schema::kEventBranchesV2V3, audit);
+  }
+  CheckBranches(*hits, pg::root_schema::kHitBranches, audit);
+  CheckBranches(*generator, pg::root_schema::kGeneratorBranches, audit);
+  if (schemaVersion == pg::root_schema::kWorkerSeedVersion) {
+    CheckBranches(*metadata, pg::root_schema::kMetadataBranchesV2, audit);
+  } else if (schemaVersion ==
+             pg::root_schema::kPrimaryEventStableVersion) {
+    CheckBranches(*metadata, pg::root_schema::kMetadataBranchesV3, audit);
+  } else {
+    CheckBranches(*metadata, pg::root_schema::kMetadataBranchesV4, audit);
+  }
+
   int configuredEvents = -1;
   int firstBcid = -1;
   int generatorAudit = -1;
+  int seedBase = -1;
+  int pythiaInitializationSeed = -1;
+  int pythiaSeedMax = -1;
+  int geant4TransportSeedMax = -1;
   int singleParticlePdg = 0;
   double maxAbsEta = -1.0;
   double singleParticleKineticEnergyGeV = 0.0;
@@ -170,10 +181,19 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
   double singleParticlePhi = 0.0;
   std::string generatorMode;
   if (metadata->GetEntries() == 1) {
-    metadata->SetBranchAddress("schema_version", &schemaVersion);
     metadata->SetBranchAddress("events", &configuredEvents);
     metadata->SetBranchAddress("first_bcid", &firstBcid);
     metadata->SetBranchAddress("generator_audit", &generatorAudit);
+    metadata->SetBranchAddress("seed_base", &seedBase);
+    metadata->SetBranchAddress("pythia_seed_max", &pythiaSeedMax);
+    if (schemaVersion >= pg::root_schema::kPrimaryEventStableVersion) {
+      metadata->SetBranchAddress(
+          "pythia_initialization_seed", &pythiaInitializationSeed);
+    }
+    if (pg::root_schema::HasEventTransportSeed(schemaVersion)) {
+      metadata->SetBranchAddress(
+          "geant4_transport_seed_max", &geant4TransportSeedMax);
+    }
     metadata->SetBranchAddress("max_abs_eta", &maxAbsEta);
     metadata->SetBranchAddress(
         "single_particle_pdg", &singleParticlePdg);
@@ -199,9 +219,40 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
         ReadTextBranch(*metadata, "pythia_version", audit);
     generatorMode =
         ReadTextBranch(*metadata, "generator_mode", audit);
-    audit.Check(schemaVersion == 2, "schema_version deve ser 2");
+    std::string seedPolicy;
+    std::string seedIdentity;
+    std::string seedMixer;
+    std::string pythiaReseedScope;
+    if (schemaVersion >= pg::root_schema::kPrimaryEventStableVersion) {
+      seedPolicy = ReadTextBranch(*metadata, "seed_policy", audit);
+      seedIdentity = ReadTextBranch(*metadata, "seed_identity", audit);
+      seedMixer = ReadTextBranch(*metadata, "seed_mixer", audit);
+      pythiaReseedScope =
+          ReadTextBranch(*metadata, "pythia_reseed_scope", audit);
+    }
+    std::string transportSeedPolicy;
+    std::string transportSeedIdentity;
+    std::string transportSeedMixer;
+    std::string transportSeedStream;
+    std::string transportReseedScope;
+    if (pg::root_schema::HasEventTransportSeed(schemaVersion)) {
+      transportSeedPolicy = ReadTextBranch(
+          *metadata, "geant4_transport_seed_policy", audit);
+      transportSeedIdentity = ReadTextBranch(
+          *metadata, "geant4_transport_seed_identity", audit);
+      transportSeedMixer = ReadTextBranch(
+          *metadata, "geant4_transport_seed_mixer", audit);
+      transportSeedStream = ReadTextBranch(
+          *metadata, "geant4_transport_seed_stream", audit);
+      transportReseedScope = ReadTextBranch(
+          *metadata, "geant4_transport_reseed_scope", audit);
+    }
     audit.Check(configuredEvents > 0, "metadata.events deve ser positivo");
     audit.Check(firstBcid >= 0, "metadata.first_bcid não pode ser negativo");
+    audit.Check(seedBase >= 0, "metadata.seed_base não pode ser negativo");
+    audit.Check(
+        pythiaSeedMax == static_cast<int>(pg::kPythiaMaximumSeed),
+        "metadata.pythia_seed_max diverge do contrato");
     audit.Check(generatorAudit == 0 || generatorAudit == 1,
                 "metadata.generator_audit deve ser booleano");
     audit.Check(projectVersion == "0.1.0",
@@ -224,6 +275,42 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
     audit.Check(generatorMode == "pythia" ||
                     generatorMode == "single_particle",
                 "metadata.generator_mode é inválido");
+    if (schemaVersion >= pg::root_schema::kPrimaryEventStableVersion) {
+      audit.Check(seedPolicy == pg::kSeedPolicyName,
+                  "metadata.seed_policy diverge do contrato");
+      audit.Check(seedIdentity == pg::kSeedIdentityName,
+                  "metadata.seed_identity diverge do contrato");
+      audit.Check(seedMixer == pg::kSeedMixerName,
+                  "metadata.seed_mixer diverge do contrato");
+      audit.Check(pythiaReseedScope == "subevent",
+                  "metadata.pythia_reseed_scope diverge do contrato");
+      audit.Check(
+          pythiaInitializationSeed == pg::PythiaSeedForStableTuple(
+              static_cast<std::uint64_t>(seedBase), 0ULL, 0ULL,
+              pg::SeedStream::kPythiaInitialization),
+          "metadata.pythia_initialization_seed diverge do contrato");
+    }
+    if (pg::root_schema::HasEventTransportSeed(schemaVersion)) {
+      audit.Check(
+          transportSeedPolicy == pg::kGeant4TransportSeedPolicyName,
+          "metadata.geant4_transport_seed_policy diverge do contrato");
+      audit.Check(
+          transportSeedIdentity == pg::kGeant4TransportSeedIdentityName,
+          "metadata.geant4_transport_seed_identity diverge do contrato");
+      audit.Check(
+          transportSeedMixer == pg::kGeant4TransportSeedMixerName,
+          "metadata.geant4_transport_seed_mixer diverge do contrato");
+      audit.Check(
+          transportSeedStream == pg::kGeant4TransportSeedStreamName,
+          "metadata.geant4_transport_seed_stream diverge do contrato");
+      audit.Check(
+          geant4TransportSeedMax ==
+              static_cast<int>(pg::kGeant4TransportMaximumSeed),
+          "metadata.geant4_transport_seed_max diverge do contrato");
+      audit.Check(
+          transportReseedScope == pg::kGeant4TransportReseedScopeName,
+          "metadata.geant4_transport_reseed_scope diverge do contrato");
+    }
     if (generatorMode == "single_particle") {
       constexpr double kPi = 3.14159265358979323846;
       audit.Check(singleParticlePdg != 0,
@@ -260,6 +347,7 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
   int rejectedEta = -1;
   int unlineagedSteps = -1;
   int segmentationFailures = -1;
+  int geant4TransportSeed = -1;
   double muConfigured = -1.0;
   double totalEnergy = -1.0;
 
@@ -280,6 +368,10 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
   events->SetBranchAddress("rejected_outside_eta_acceptance", &rejectedEta);
   events->SetBranchAddress("unlineaged_steps", &unlineagedSteps);
   events->SetBranchAddress("segmentation_failures", &segmentationFailures);
+  if (pg::root_schema::HasEventTransportSeed(schemaVersion)) {
+    events->SetBranchAddress(
+        "geant4_transport_seed", &geant4TransportSeed);
+  }
 
   std::set<int> eventIds;
   std::map<int, int> eventBcids;
@@ -330,6 +422,19 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
                 "passos sem linhagem no evento " + std::to_string(event));
     audit.Check(segmentationFailures == 0,
                 "falhas de segmentação no evento " + std::to_string(event));
+    if (pg::root_schema::HasEventTransportSeed(schemaVersion)) {
+      audit.Check(
+          geant4TransportSeed == pg::TransportSeedForStableTuple(
+              static_cast<std::uint64_t>(seedBase),
+              static_cast<std::uint64_t>(bcid)),
+          "geant4_transport_seed diverge do contrato no evento " +
+              std::to_string(event));
+      audit.Check(
+          geant4TransportSeed > 0 &&
+              geant4TransportSeed <= geant4TransportSeedMax,
+          "geant4_transport_seed fora do domínio no evento " +
+              std::to_string(event));
+    }
   }
   events->ResetBranchAddresses();
 
@@ -464,7 +569,8 @@ void audit_root(const char* filename = "outputs/minbias_smoke.root",
   generator->ResetBranchAddresses();
 
   if (audit.Failures() == 0) {
-    std::cout << "AUDIT_RESULT=PASS events=" << events->GetEntries()
+    std::cout << "AUDIT_RESULT=PASS schema=" << schemaVersion
+              << " events=" << events->GetEntries()
               << " hits=" << hits->GetEntries()
               << " generator=" << generator->GetEntries() << '\n';
   } else {

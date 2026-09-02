@@ -73,7 +73,7 @@ class StatisticalAggregatorTest(unittest.TestCase):
                         )
                         writer.writeheader()
                         writer.writerow({
-                            "schema_version": 2,
+                            "schema_version": 4,
                             "git_commit": "a" * 40,
                             "generator_mode": "single_particle",
                             "single_particle_pdg": pdg,

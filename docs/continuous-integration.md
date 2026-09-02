@@ -10,9 +10,10 @@ full High-Energy Physics software stack.
 
 It contains:
 
-- seven standalone C++17 regression-test executables;
-- thirteen Python regression-test files;
+- ten standalone C++17 regression-test executables;
+- fifteen Python regression-test files;
 - deterministic seed-policy and auxiliary RNG checks;
+- current and historical ROOT schema-contract checks;
 - configuration, segmentation, single-particle kinematics and
   single-particle analysis checks;
 - campaign, preflight, aggregation and reproducibility support logic.

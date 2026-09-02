@@ -53,15 +53,18 @@ contrato interno desta execução.
 O Geant4 cria ações por trabalhador. Cada trabalhador recebe:
 
 - uma instância PYTHIA;
-- um gerador pseudoaleatório para Poisson e beam spot;
 - um `EventState` thread-local.
 
-`SeedPolicy` deriva de `seed_base` a semente mestre do Geant4 e a semente-base
-do PYTHIA. Para o trabalhador, aplica uma derivação determinística pelo seu
-identificador, com stride `104729`, e normaliza o resultado para o intervalo
-aceito pelo PYTHIA, cujo máximo é `900000000`. Esses parâmetros são persistidos
-em `metadata`.
+`SeedPolicy` deriva todos os fluxos científicos de identidades globais
+estáveis. A inicialização PYTHIA usa `seed_base`; cada subevento usa
+`(seed_base, bcid, subevent, stream)`, e o Poisson e o beam spot usam o mesmo
+domínio estável com streams separados. Antes do tracking, o transporte Geant4
+recebe um seed derivado de `(seed_base, bcid, transport-event stream)`.
 
-O número de threads faz parte da definição reprodutível da campanha porque
-determina quantas instâncias e sequências PYTHIA participam da execução. Em
-máquinas com cerca de 7 GiB de RAM, comece com uma ou duas threads.
+Identidade do trabalhador, agendamento, ordem de shards, `event` local e
+número de threads não entram na derivação. A `metadata` schema 4 registra a
+política e o domínio do seed, e `events.geant4_transport_seed` registra o valor
+instalado por BCID. O Ciclo 11 validou igualdade científica canônica para uma
+e duas threads na matriz contratada. O número de threads continua relevante
+para proveniência operacional, memória e desempenho; em máquinas com cerca de
+7 GiB de RAM, comece com uma ou duas threads.
