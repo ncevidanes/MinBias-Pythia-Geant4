@@ -116,6 +116,33 @@ separate_arguments(ROOT_LIBS NATIVE_COMMAND "${ROOT_LIBS_RAW}")
 list(FILTER PYTHIA8_CXXFLAGS EXCLUDE REGEX "^-std=")
 list(FILTER ROOT_CXXFLAGS EXCLUDE REGEX "^-std=")
 
+# Centralized warning policy for project-owned C++ targets.
+# Keep dependency-provided flags separate from the project's warning contract.
+add_library(pythia_project_warnings INTERFACE)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
+  target_compile_options(
+    pythia_project_warnings
+    INTERFACE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+endif()
+
+function(pythia_enable_project_warnings target)
+  if(NOT TARGET "${target}")
+    message(FATAL_ERROR
+      "pythia_enable_project_warnings: unknown target '${target}'")
+  endif()
+
+  target_link_libraries(
+    ${target}
+    PRIVATE
+      pythia_project_warnings
+  )
+endfunction()
+
 add_executable(
   pythia_geant
   app/main.cc
@@ -144,10 +171,8 @@ target_compile_options(
   pythia_geant
   PRIVATE
     ${PYTHIA8_CXXFLAGS}
-    -Wall
-    -Wextra
-    -Wpedantic
 )
+pythia_enable_project_warnings(pythia_geant)
 target_link_libraries(
   pythia_geant
   PRIVATE
@@ -165,13 +190,7 @@ target_include_directories(
   PUBLIC
     "${PROJECT_SOURCE_DIR}/include"
 )
-target_compile_options(
-  single_particle_analysis
-  PRIVATE
-    -Wall
-    -Wextra
-    -Wpedantic
-)
+pythia_enable_project_warnings(single_particle_analysis)
 
 add_executable(
   single_particle_analyzer
@@ -190,10 +209,8 @@ target_compile_options(
   single_particle_analyzer
   PRIVATE
     ${ROOT_CXXFLAGS}
-    -Wall
-    -Wextra
-    -Wpedantic
 )
+pythia_enable_project_warnings(single_particle_analyzer)
 target_link_libraries(
   single_particle_analyzer
   PRIVATE
@@ -214,13 +231,7 @@ if(BUILD_TESTING)
     PRIVATE
       "${PROJECT_SOURCE_DIR}/include"
   )
-  target_compile_options(
-    particle_decision_test
-    PRIVATE
-      -Wall
-      -Wextra
-      -Wpedantic
-  )
+  pythia_enable_project_warnings(particle_decision_test)
   add_test(NAME particle_decision COMMAND particle_decision_test)
 
   add_executable(
@@ -234,13 +245,7 @@ if(BUILD_TESTING)
     PRIVATE
       "${PROJECT_SOURCE_DIR}/include"
   )
-  target_compile_options(
-    cell_segmentation_test
-    PRIVATE
-      -Wall
-      -Wextra
-      -Wpedantic
-  )
+  pythia_enable_project_warnings(cell_segmentation_test)
   add_test(NAME cell_segmentation COMMAND cell_segmentation_test)
 
   add_executable(
@@ -252,13 +257,7 @@ if(BUILD_TESTING)
     PRIVATE
       "${PROJECT_SOURCE_DIR}/include"
   )
-  target_compile_options(
-    seed_policy_test
-    PRIVATE
-      -Wall
-      -Wextra
-      -Wpedantic
-  )
+  pythia_enable_project_warnings(seed_policy_test)
   add_test(NAME seed_policy COMMAND seed_policy_test)
 
   add_executable(
@@ -270,13 +269,7 @@ if(BUILD_TESTING)
     PRIVATE
       "${PROJECT_SOURCE_DIR}/include"
   )
-  target_compile_options(
-    root_schema_test
-    PRIVATE
-      -Wall
-      -Wextra
-      -Wpedantic
-  )
+  pythia_enable_project_warnings(root_schema_test)
   add_test(NAME root_schema COMMAND root_schema_test)
 
   add_executable(
@@ -288,13 +281,7 @@ if(BUILD_TESTING)
     PRIVATE
       "${PROJECT_SOURCE_DIR}/include"
   )
-  target_compile_options(
-    transport_seed_policy_test
-    PRIVATE
-      -Wall
-      -Wextra
-      -Wpedantic
-  )
+  pythia_enable_project_warnings(transport_seed_policy_test)
   add_test(
     NAME transport_seed_policy
     COMMAND transport_seed_policy_test
@@ -310,13 +297,7 @@ if(BUILD_TESTING)
     PRIVATE
       "${PROJECT_SOURCE_DIR}/include"
   )
-  target_compile_options(
-    event_state_transport_seed_test
-    PRIVATE
-      -Wall
-      -Wextra
-      -Wpedantic
-  )
+  pythia_enable_project_warnings(event_state_transport_seed_test)
   add_test(
     NAME event_state_transport_seed
     COMMAND event_state_transport_seed_test
@@ -331,13 +312,7 @@ if(BUILD_TESTING)
     PRIVATE
       "${PROJECT_SOURCE_DIR}/include"
   )
-  target_compile_options(
-    stable_random_test
-    PRIVATE
-      -Wall
-      -Wextra
-      -Wpedantic
-  )
+  pythia_enable_project_warnings(stable_random_test)
   add_test(
     NAME stable_random
     COMMAND stable_random_test
@@ -356,10 +331,8 @@ if(BUILD_TESTING)
     pythia_reseed_test
     PRIVATE
       ${PYTHIA8_CXXFLAGS}
-      -Wall
-      -Wextra
-      -Wpedantic
   )
+  pythia_enable_project_warnings(pythia_reseed_test)
   target_link_libraries(
     pythia_reseed_test
     PRIVATE
@@ -381,13 +354,7 @@ if(BUILD_TESTING)
     PRIVATE
       "${PROJECT_SOURCE_DIR}/include"
   )
-  target_compile_options(
-    configuration_test
-    PRIVATE
-      -Wall
-      -Wextra
-      -Wpedantic
-  )
+  pythia_enable_project_warnings(configuration_test)
   add_test(NAME configuration COMMAND configuration_test)
 
   add_executable(
@@ -399,13 +366,7 @@ if(BUILD_TESTING)
     PRIVATE
       "${PROJECT_SOURCE_DIR}/include"
   )
-  target_compile_options(
-    single_particle_kinematics_test
-    PRIVATE
-      -Wall
-      -Wextra
-      -Wpedantic
-  )
+  pythia_enable_project_warnings(single_particle_kinematics_test)
   add_test(
     NAME single_particle_kinematics
     COMMAND single_particle_kinematics_test
@@ -415,13 +376,7 @@ if(BUILD_TESTING)
     single_particle_analysis_test
     tests/SingleParticleAnalysisTest.cc
   )
-  target_compile_options(
-    single_particle_analysis_test
-    PRIVATE
-      -Wall
-      -Wextra
-      -Wpedantic
-  )
+  pythia_enable_project_warnings(single_particle_analysis_test)
   target_link_libraries(
     single_particle_analysis_test
     PRIVATE
