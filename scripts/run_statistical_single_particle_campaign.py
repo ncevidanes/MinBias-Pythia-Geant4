@@ -18,6 +18,13 @@ from pathlib import Path
 from typing import Sequence
 
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from root_schema_contract import SUPPORTED_ROOT_SCHEMA_VERSIONS
+
+
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 CONFIG_FILE = PROJECT_DIR / "config" / "single_particle.conf"
 RUN_SCRIPT = PROJECT_DIR / "run.sh"
@@ -308,7 +315,7 @@ def validate_case_outputs(
     git_commit: str,
 ) -> None:
     summary = read_one_csv_row(summary_path)
-    if int(summary["schema_version"]) != 2:
+    if int(summary["schema_version"]) not in SUPPORTED_ROOT_SCHEMA_VERSIONS:
         raise CampaignError(f"unexpected schema in {summary_path}")
     if summary["git_commit"] != git_commit:
         raise CampaignError(f"Git provenance mismatch in {summary_path}")

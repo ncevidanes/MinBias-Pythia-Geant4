@@ -16,6 +16,13 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from root_schema_contract import SUPPORTED_ROOT_SCHEMA_VERSIONS
+
+
 ETA_VALUES = (0.0, 0.4, 0.8)
 PRODUCTION_CUTS_MM = (0.1, 1.0, 10.0)
 SEEDS = (643031, 643032, 643033, 643034, 643035)
@@ -199,7 +206,7 @@ def load_run(manifest: dict[str, str], input_dir: Path) -> Run:
             "relative_resolution",
         ),
     )
-    if int(summary["schema_version"]) != 2:
+    if int(summary["schema_version"]) not in SUPPORTED_ROOT_SCHEMA_VERSIONS:
         raise ValueError(f"unexpected schema in {summary_path}")
     if summary["git_commit"] != git_commit:
         raise ValueError(f"Git provenance mismatch in {summary_path}")

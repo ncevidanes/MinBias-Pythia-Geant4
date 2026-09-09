@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 
+#include "RootSchema.hh"
 #include "SingleParticleAnalysis.hh"
 
 #include <TFile.h>
@@ -25,8 +26,6 @@
 #include <vector>
 
 namespace {
-
-constexpr int kExpectedSchemaVersion = 2;
 
 struct Options {
   std::filesystem::path input;
@@ -226,7 +225,7 @@ Metadata ReadMetadata(TTree& tree) {
   metadata.phi = phiLeaf.GetValue();
   metadata.productionCutMm = productionCutLeaf.GetValue();
 
-  if (metadata.schemaVersion != kExpectedSchemaVersion) {
+  if (!pg::root_schema::IsSupportedVersion(metadata.schemaVersion)) {
     throw std::runtime_error(
         "Unsupported schema_version: " +
         std::to_string(metadata.schemaVersion));

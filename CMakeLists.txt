@@ -262,6 +262,24 @@ if(BUILD_TESTING)
   add_test(NAME seed_policy COMMAND seed_policy_test)
 
   add_executable(
+    root_schema_test
+    tests/RootSchemaTest.cc
+  )
+  target_include_directories(
+    root_schema_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_compile_options(
+    root_schema_test
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+  )
+  add_test(NAME root_schema COMMAND root_schema_test)
+
+  add_executable(
     transport_seed_policy_test
     tests/TransportSeedPolicyTest.cc
   )
@@ -418,6 +436,12 @@ if(BUILD_TESTING)
     NAME statistical_aggregator
     COMMAND "${Python3_EXECUTABLE}" -B
       "${PROJECT_SOURCE_DIR}/tests/test_statistical_aggregator.py"
+  )
+
+  add_test(
+    NAME root_schema_contract
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_root_schema_contract.py"
   )
 
   add_test(

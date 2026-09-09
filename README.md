@@ -150,7 +150,8 @@ Mapeamento de `sampling`:
 ## Análise ROOT de partículas únicas
 
 O executável `single_particle_analyzer` analisa, sem modificar, um ROOT com
-`schema_version = 2` e `generator_mode = single_particle`:
+`schema_version` 2, 3 ou 4 e `generator_mode = single_particle`. O schema 4 é
+o formato corrente; 2 e 3 possuem interpretação histórica explícita:
 
 ```bash
 ./build/single_particle_analyzer \
@@ -274,7 +275,7 @@ Antes de criar uma tag de release, faça o commit da candidata, mantenha a
 ./scripts/audit_release.sh
 ```
 
-Ela realiza build limpo, seis testes de regressão, dry runs, duas execuções
+Ela realiza build limpo, toda a suíte CTest registrada, dry runs, duas execuções
 smoke com a mesma semente, auditoria das quatro TTrees, comparação exata do
 conteúdo ROOT e inspeção do arquivo-fonte produzido por `git archive`. As
 evidências são gravadas sob `outputs/`, que não é versionado.

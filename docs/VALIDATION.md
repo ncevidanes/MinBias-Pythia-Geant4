@@ -15,7 +15,7 @@ Critérios:
 - `FTFP_BERT_ATL` é encontrada;
 - não há sobreposições geométricas no smoke test;
 - o ROOT contém `events`, `hits`, `generator` e `metadata`;
-- `metadata` contém exatamente uma entrada e 39 branches;
+- `metadata` schema 4 contém exatamente uma entrada e 48 branches;
 - `generator` está preenchida quando `generator_audit = true`.
 
 ## 2. Testes de regressão
@@ -32,17 +32,39 @@ Devem estar registrados e aprovados:
 - `particle_decision`;
 - `cell_segmentation`;
 - `seed_policy`;
+- `root_schema`;
+- `transport_seed_policy`;
+- `event_state_transport_seed`;
+- `stable_random`;
+- `pythia_reseed`;
 - `configuration`;
 - `single_particle_kinematics`;
 - `single_particle_analysis`;
+- `root_schema_contract`;
 - `statistical_aggregator`;
 - `statistical_campaign_executor`;
 - `longitudinal_containment`;
 - `hadronic_tail_systematics`;
-- `hadronic_tail_aggregator`.
+- `hadronic_tail_aggregator`;
+- `integrated_minbias_preflight`;
+- `integrated_minbias_executor`;
+- `neutrino_transport_preflight`;
+- `neutrino_transport_executor`;
+- `neutrino_transport_stage83_preflight`;
+- `neutrino_transport_stage83_executor`;
+- `performance_reproducibility_preflight`;
+- `performance_reproducibility_analyzer`;
+- `performance_reproducibility_executor`;
+- `partition_stability_analyzer`;
+- `partition_root_adapter`;
+- `cycle10_metadata_analyzer`;
+- `cycle11_schema4_analyzer`.
 
-O teste `seed_policy` cobre normalização, limites, sementes por trabalhador,
-wrap-around e ausência de colisões no intervalo exercitado pelo teste.
+Os testes `seed_policy`, `transport_seed_policy`, `event_state_transport_seed`
+e `stable_random` cobrem os vetores conhecidos, domínios, limites e a
+independência de partição/thread dos fluxos científicos. `root_schema` e
+`root_schema_contract` fixam o schema corrente 4 e as interpretações históricas
+explícitas dos schemas 2 e 3.
 O teste `configuration` cobre resolução de caminhos, chaves desconhecidas,
 números malformados ou não finitos, sigmas negativos e overflow de BCID.
 O teste `single_particle_analysis` cobre estatísticas de energia, samplings
@@ -229,14 +251,15 @@ Executar duas vezes com a mesma configuração e comparar:
 Conferir em `metadata`, no mínimo:
 
 - versões do projeto, Git, ROOT, Geant4 e PYTHIA;
-- `threads`, `seed_base` e sementes derivadas;
-- `pythia_worker_seed_stride` e `pythia_seed_max`;
+- `threads`, `seed_base`, política, identidade e mixer dos seeds;
+- `pythia_initialization_seed`, `pythia_seed_max` e escopo de reseed;
+- contrato do seed de transporte Geant4 e seu valor por BCID;
 - `normalized_config`.
 
-Para multithreading, manter também o mesmo número de threads. Comparações com
-números diferentes de threads validam integridade e proveniência, mas não
-identidade evento a evento, pois muda a distribuição entre os geradores
-PYTHIA dos trabalhadores.
+Para o mesmo `seed_base`, intervalo de BCIDs e configuração física, mudanças
+entre uma e duas threads devem preservar exatamente o resultado científico
+canônico. O campo `threads` permanece diferente na proveniência operacional e
+deve ser excluído da comparação científica, conforme o contrato do Ciclo 11.
 
 Para a candidata de release, `scripts/audit_release.sh` automatiza duas
 execuções com `threads = 1`, a mesma configuração, a mesma semente e o mesmo

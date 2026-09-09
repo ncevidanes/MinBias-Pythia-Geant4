@@ -79,6 +79,22 @@ add_lightweight_cpp_test(
 )
 
 add_lightweight_cpp_test(
+  root_schema
+  "${REPOSITORY_ROOT}/tests/RootSchemaTest.cc"
+)
+
+add_lightweight_cpp_test(
+  transport_seed_policy
+  "${REPOSITORY_ROOT}/tests/TransportSeedPolicyTest.cc"
+)
+
+add_lightweight_cpp_test(
+  event_state_transport_seed
+  "${REPOSITORY_ROOT}/tests/EventStateTransportSeedTest.cc"
+  "${REPOSITORY_ROOT}/src/EventState.cc"
+)
+
+add_lightweight_cpp_test(
   stable_random
   "${REPOSITORY_ROOT}/tests/StableRandomTest.cc"
 )
@@ -115,6 +131,7 @@ set(
   test_performance_reproducibility_executor.py
   test_performance_reproducibility_preflight.py
   test_partition_stability_analyzer.py
+  test_root_schema_contract.py
   test_statistical_aggregator.py
   test_statistical_campaign_executor.py
 )
