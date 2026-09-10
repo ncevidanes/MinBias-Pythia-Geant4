@@ -14,4 +14,3 @@ class TrackingAction final : public G4UserTrackingAction {
 }  // namespace pg
 
 #endif
-

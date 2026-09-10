@@ -51,7 +51,8 @@ struct SingleParticleAnalysisSummary {
   double etaWidth = 0.0;
   double phiWidth = 0.0;
   std::array<SamplingAnalysisSummary,
-             kSingleParticleSamplingCount> samplings{};
+             kSingleParticleSamplingCount>
+      samplings{};
 };
 
 double NormalizePhiDifference(double angle);

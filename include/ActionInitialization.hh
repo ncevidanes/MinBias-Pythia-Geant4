@@ -21,4 +21,3 @@ class ActionInitialization final : public G4VUserActionInitialization {
 }  // namespace pg
 
 #endif
-

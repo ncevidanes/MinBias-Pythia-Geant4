@@ -38,4 +38,3 @@ class PrimaryGeneratorAction final
 }  // namespace pg
 
 #endif
-

@@ -23,4 +23,3 @@ class EventAction final : public G4UserEventAction {
 }  // namespace pg
 
 #endif
-

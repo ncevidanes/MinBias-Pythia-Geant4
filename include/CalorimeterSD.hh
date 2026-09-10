@@ -23,4 +23,3 @@ class CalorimeterSD final : public G4VSensitiveDetector {
 }  // namespace pg
 
 #endif
-

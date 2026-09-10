@@ -239,4 +239,3 @@ std::string SamplingName(const int id) {
 }
 
 }  // namespace pg
-
