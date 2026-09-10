@@ -117,6 +117,9 @@ void CheckEveryCellIsUnique(
               std::to_string(ids.size()));
 }
 
+// The optional engagement is asserted with Require(has_value()) before access.
+// clang-tidy does not model the custom fatal assertion helper as an engagement proof.
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 void CheckBoundaries(const std::map<int, pg::Sampling>& samplings) {
   const pg::CellSegmentation segmentation(
       samplings.at(static_cast<int>(pg::SamplingId::EMB2)));
@@ -151,7 +154,11 @@ void CheckBoundaries(const std::map<int, pg::Sampling>& samplings) {
   Require(minusPi->address.phiIndex == 0,
           "Canonical -pi boundary is not in the first phi bin");
 }
+// NOLINTEND(bugprone-unchecked-optional-access)
 
+// The optional engagement is asserted with Require(has_value()) before access.
+// clang-tidy does not model the custom fatal assertion helper as an engagement proof.
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 void CheckCentralSplit(const std::map<int, pg::Sampling>& samplings) {
   const pg::CellSegmentation segmentation(
       samplings.at(static_cast<int>(pg::SamplingId::TileCal3)));
@@ -171,6 +178,7 @@ void CheckCentralSplit(const std::map<int, pg::Sampling>& samplings) {
   RequireNear(positive->etaCenter, 0.05, 1.0e-12,
               "Positive central cell has the wrong center");
 }
+// NOLINTEND(bugprone-unchecked-optional-access)
 
 void CheckInvalidInputs(const std::map<int, pg::Sampling>& samplings) {
   Require(!pg::EncodeCellId({0, 0, 0, 0}).has_value(),
