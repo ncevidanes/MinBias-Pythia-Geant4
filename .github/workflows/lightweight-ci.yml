@@ -50,7 +50,7 @@ jobs:
 
           echo "TRACKED_CPP_FILE_COUNT=${#files[@]}"
 
-          test "${#files[@]}" -eq 46
+          test "${#files[@]}" -eq 48
 
           clang-format-21 \
             --dry-run \
