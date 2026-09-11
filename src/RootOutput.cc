@@ -2,6 +2,7 @@
 
 #include "BuildInfo.hh"
 #include "EventState.hh"
+#include "OutputTransaction.hh"
 #include "SeedPolicy.hh"
 
 #include "G4AnalysisManager.hh"
@@ -14,6 +15,7 @@
 
 #include <cstdint>
 #include <numeric>
+#include <stdexcept>
 
 namespace pg {
 namespace {
@@ -25,14 +27,6 @@ constexpr int kMetadataNtuple = 3;
 
 static_assert(kMaxPackedCellId < (CellId{1} << 53),
               "Packed cell IDs must be exactly representable as doubles.");
-
-bool IsMetadataWriter() {
-#ifdef G4MULTITHREADED
-  return G4Threading::G4GetThreadId() == 0;
-#else
-  return true;
-#endif
-}
 
 }  // namespace
 
@@ -175,14 +169,29 @@ void RootOutput::Book() {
 
 void RootOutput::BeginRun(const Configuration& configuration) {
   auto* analysis = G4AnalysisManager::Instance();
-  analysis->OpenFile(configuration.outputFile.string());
 
-  if (IsMetadataWriter()) {
-    WriteMetadata(configuration);
+  const auto stagingPath =
+      OutputTransaction::StagingPath(configuration.outputFile);
+
+  if (!analysis->OpenFile(stagingPath.string())) {
+    throw std::runtime_error(
+        "Unable to open ROOT staging output: " +
+        stagingPath.string());
   }
 }
 
-void RootOutput::WriteMetadata(const Configuration& configuration) {
+void RootOutput::WriteMetadataForEvent(
+    const Configuration& configuration,
+    const int eventId) {
+  if (eventId != 0) {
+    return;
+  }
+
+  WriteMetadata(configuration);
+}
+
+void RootOutput::WriteMetadata(
+    const Configuration& configuration) {
   auto* analysis = G4AnalysisManager::Instance();
 
   const int pythiaInitializationSeed =
@@ -304,8 +313,19 @@ void RootOutput::WriteMetadata(const Configuration& configuration) {
 
 void RootOutput::EndRun() {
   auto* analysis = G4AnalysisManager::Instance();
-  analysis->Write();
-  analysis->CloseFile();
+
+  const bool writeSucceeded = analysis->Write();
+  const bool closeSucceeded = analysis->CloseFile();
+
+  if (!writeSucceeded) {
+    throw std::runtime_error(
+        "Unable to write ROOT staging output");
+  }
+
+  if (!closeSucceeded) {
+    throw std::runtime_error(
+        "Unable to close ROOT staging output");
+  }
 }
 
 int RootOutput::CurrentRunId() {

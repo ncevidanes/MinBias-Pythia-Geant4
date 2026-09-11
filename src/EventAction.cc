@@ -1,11 +1,13 @@
 #include "EventAction.hh"
 
 #include "EventState.hh"
+#include "Interruption.hh"
 #include "RootOutput.hh"
 #include "SeedPolicy.hh"
 
 #include "G4Event.hh"
 #include "G4Exception.hh"
+#include "G4RunManager.hh"
 #include "G4ios.hh"
 #include "Randomize.hh"
 
@@ -42,6 +44,10 @@ void EventAction::BeginOfEventAction(const G4Event* event) {
     return;
   }
 
+  RootOutput::WriteMetadataForEvent(
+      configuration_,
+      eventId);
+
   const int transportSeed =
       TransportSeedForStableTuple(
           static_cast<std::uint64_t>(
@@ -64,6 +70,14 @@ void EventAction::EndOfEventAction(const G4Event* event) {
            << state.requestedInteractions << ", primárias transportadas "
            << state.transportedParticles << ", células/subeventos "
            << state.deposits.size() << G4endl;
+  }
+  if (Interruption::Requested()) {
+    auto* runManager =
+        G4RunManager::GetRunManager();
+
+    if (runManager != nullptr) {
+      runManager->AbortRun(true);
+    }
   }
 }
 

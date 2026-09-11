@@ -1,6 +1,7 @@
 #include "ActionInitialization.hh"
 #include "Configuration.hh"
 #include "DetectorConstruction.hh"
+#include "Interruption.hh"
 
 #include "G4PhysListFactory.hh"
 #include "G4RunManager.hh"
@@ -8,6 +9,8 @@
 #include "G4SystemOfUnits.hh"
 #include "G4VModularPhysicsList.hh"
 #include "Randomize.hh"
+
+#include "OutputTransaction.hh"
 
 #ifdef G4MULTITHREADED
 #include "G4MTRunManager.hh"
@@ -188,7 +191,14 @@ int main(int argc, char** argv) {
       return 0;
     }
 
+    pg::Interruption::Install();
+    pg::Interruption::ThrowIfRequested();
+
+    pg::OutputTransactionGuard outputTransaction(
+        configuration.outputFile);
+
     configuration.WriteManifest();
+    pg::Interruption::ThrowIfRequested();
 
     G4Random::setTheSeed(
         static_cast<long>(configuration.seedBase));
@@ -218,12 +228,24 @@ int main(int argc, char** argv) {
         new pg::ActionInitialization(configuration));
 
     runManager->Initialize();
+    pg::Interruption::ThrowIfRequested();
+
     runManager->BeamOn(configuration.events);
+
+    pg::Interruption::BeginCommitPhase();
+    pg::Interruption::ThrowIfRequested();
+
+    outputTransaction.Commit();
 
     std::cout << "Simulação concluída: " << configuration.outputFile << '\n';
     return 0;
   } catch (const std::exception& error) {
     std::cerr << "Erro: " << error.what() << '\n';
+
+    if (pg::Interruption::Requested()) {
+      return 128 + pg::Interruption::SignalNumber();
+    }
+
     return 1;
   }
 }

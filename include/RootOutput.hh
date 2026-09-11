@@ -38,6 +38,9 @@ class RootOutput {
   static void Book();
   static void BeginRun(const Configuration& configuration);
   static void EndRun();
+  static void WriteMetadataForEvent(
+      const Configuration& configuration,
+      int eventId);
   static void WriteGeneratorParticle(const GeneratorParticleRecord& record);
   static void WriteEventAndHits(const Configuration& configuration);
 
