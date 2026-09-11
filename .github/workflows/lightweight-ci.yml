@@ -50,7 +50,7 @@ jobs:
 
           echo "TRACKED_CPP_FILE_COUNT=${#files[@]}"
 
-          test "${#files[@]}" -eq 48
+          test "${#files[@]}" -eq 54
 
           clang-format-21 \
             --dry-run \
@@ -107,7 +107,7 @@ jobs:
 
           echo "LIGHTWEIGHT_TRANSLATION_UNIT_COUNT=$tu_count"
 
-          test "$tu_count" -eq 15
+          test "$tu_count" -eq 19
 
           while IFS= read -r file; do
             test -n "$file" || continue

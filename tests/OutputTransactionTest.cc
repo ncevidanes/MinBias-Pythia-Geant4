@@ -259,6 +259,8 @@ void TestGuardCleansIncompleteArtifacts() {
       pg::OutputTransaction::ManifestPath(
           finalPath);
 
+  bool controlledFailureObserved = false;
+
   try {
     pg::OutputTransactionGuard transaction(
         finalPath);
@@ -273,8 +275,18 @@ void TestGuardCleansIncompleteArtifacts() {
 
     throw std::runtime_error(
         "synthetic controlled failure");
-  } catch (const std::runtime_error&) {
+  } catch (const std::runtime_error& error) {
+    Require(
+        std::string(error.what()) ==
+            "synthetic controlled failure",
+        "Unexpected controlled failure exception");
+
+    controlledFailureObserved = true;
   }
+
+  Require(
+      controlledFailureObserved,
+      "Synthetic controlled failure was not observed");
 
   Require(
       !std::filesystem::exists(finalPath),
