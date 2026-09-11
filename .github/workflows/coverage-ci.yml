@@ -1,0 +1,130 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+name: Coverage CI
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    paths:
+      - "CMakeLists.txt"
+      - "app/**"
+      - "src/**"
+      - "include/**"
+      - "tests/**"
+      - "config/**"
+      - "cmake/**"
+      - "scripts/run_coverage.sh"
+      - "ci/coverage-*"
+      - ".github/workflows/coverage-ci.yml"
+
+  push:
+    branches:
+      - master
+    paths:
+      - "CMakeLists.txt"
+      - "app/**"
+      - "src/**"
+      - "include/**"
+      - "tests/**"
+      - "config/**"
+      - "cmake/**"
+      - "scripts/run_coverage.sh"
+      - "ci/coverage-*"
+      - ".github/workflows/coverage-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coverage-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: GCC 14 full-stack coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Create full HEP coverage environment
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          environment-file: ci/coverage-environment.yml
+          init-shell: bash
+          cache-environment: true
+          cache-downloads: false
+
+      - name: Verify scientific toolchain
+        run: |
+          set -euo pipefail
+
+          echo "PYTHON_VERSION=$(python --version 2>&1)"
+          echo "GCC_VERSION=$(gcc -dumpfullversion)"
+          echo "GXX_VERSION=$(g++ -dumpfullversion)"
+
+          gcov_version="$(
+            gcov --version |
+              awk 'NR == 1 {print $NF}'
+          )"
+
+          echo "GCOV_VERSION=$gcov_version"
+          echo "ROOT_VERSION=$(root-config --version)"
+          echo "PYTHIA8_VERSION=$(pythia8-config --version)"
+          echo "CMAKE_VERSION=$(cmake --version | awk 'NR == 1 {print $3}')"
+
+          geant4_version="$(
+            micromamba list geant4 |
+              awk '$1 == "geant4" {print $2}'
+          )"
+
+          echo "GEANT4_VERSION=$geant4_version"
+
+          test "$(gcc -dumpfullversion)" = "14.3.0"
+          test "$(g++ -dumpfullversion)" = "14.3.0"
+          test "$gcov_version" = "14.3.0"
+
+          test "$(root-config --version)" = "6.36.06"
+          test "$(pythia8-config --version)" = "8.312"
+          test "$geant4_version" = "11.3.2"
+
+          echo "CI_TOOLCHAIN_GATE=PASS"
+
+      - name: Run strict canonical coverage
+        env:
+          COVERAGE_ENFORCE_BASELINE: "1"
+          COVERAGE_JOBS: "2"
+        run: |
+          set -euo pipefail
+
+          ./scripts/run_coverage.sh
+
+          echo "CI_STRICT_COVERAGE_GATE=PASS"
+
+      - name: Summarize validated coverage
+        run: |
+          set -euo pipefail
+
+          test -s build-coverage-report/lines.txt
+          test -s build-coverage-report/branches.txt
+
+          awk \
+            '$1 == "TOTAL" {
+              print "GLOBAL_LINES=" $3 "/" $2
+              print "GLOBAL_LINE_COVERAGE=" $4
+            }' \
+            build-coverage-report/lines.txt
+
+          awk \
+            '$1 == "TOTAL" {
+              print "GLOBAL_BRANCHES=" $3 "/" $2
+              print "GLOBAL_BRANCH_COVERAGE=" $4
+            }' \
+            build-coverage-report/branches.txt

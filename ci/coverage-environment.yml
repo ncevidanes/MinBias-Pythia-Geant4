@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+name: pythia-coverage
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.10
+  - pip
+  - geant4=11.3.2
+  - pythia8=8.312
+  - root=6.36.06
+  - gcc_linux-64=14.3.0
+  - gxx_linux-64=14.3.0
+  - cmake>=3.20
