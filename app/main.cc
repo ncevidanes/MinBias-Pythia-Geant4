@@ -13,6 +13,7 @@
 #include "G4MTRunManager.hh"
 #endif
 
+#include <cmath>
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -45,6 +46,37 @@ std::string RequireValue(int& index, const int argc, char** argv,
     throw std::runtime_error("Valor ausente para " + option);
   }
   return argv[++index];
+}
+
+int ParseStrictIntOption(const std::string& value,
+                         const std::string& option) {
+  try {
+    std::size_t parsed = 0;
+    const int result = std::stoi(value, &parsed);
+    if (parsed != value.size()) {
+      throw std::runtime_error("caracteres adicionais");
+    }
+    return result;
+  } catch (const std::exception&) {
+    throw std::runtime_error("Valor inteiro inválido para " + option +
+                             ": " + value);
+  }
+}
+
+double ParseStrictDoubleOption(const std::string& value,
+                               const std::string& option) {
+  try {
+    std::size_t parsed = 0;
+    const double result = std::stod(value, &parsed);
+    if (parsed != value.size() || !std::isfinite(result)) {
+      throw std::runtime_error(
+          "valor não finito ou caracteres adicionais");
+    }
+    return result;
+  } catch (const std::exception&) {
+    throw std::runtime_error("Valor numérico inválido para " + option +
+                             ": " + value);
+  }
 }
 
 }  // namespace
@@ -97,17 +129,17 @@ int main(int argc, char** argv) {
         ++index;
       } else if (argument == "--events") {
         configuration.events =
-            std::stoi(RequireValue(index, argc, argv, argument));
+            ParseStrictIntOption(RequireValue(index, argc, argv, argument), argument);
       } else if (argument == "--mu") {
         configuration.meanInteractions =
-            std::stod(RequireValue(index, argc, argv, argument));
+            ParseStrictDoubleOption(RequireValue(index, argc, argv, argument), argument);
         configuration.interactionMode = "poisson";
       } else if (argument == "--threads") {
         configuration.threads =
-            std::stoi(RequireValue(index, argc, argv, argument));
+            ParseStrictIntOption(RequireValue(index, argc, argv, argument), argument);
       } else if (argument == "--seed") {
         configuration.seedBase =
-            std::stoi(RequireValue(index, argc, argv, argument));
+            ParseStrictIntOption(RequireValue(index, argc, argv, argument), argument);
       } else if (argument == "--output") {
         configuration.outputFile = std::filesystem::absolute(
             RequireValue(index, argc, argv, argument));
@@ -116,26 +148,40 @@ int main(int argc, char** argv) {
             RequireValue(index, argc, argv, argument);
       } else if (argument == "--production-cut-mm") {
         configuration.productionCutMm =
-            std::stod(RequireValue(index, argc, argv, argument));
+            ParseStrictDoubleOption(RequireValue(index, argc, argv, argument), argument);
       } else if (argument == "--generator-mode") {
         configuration.generatorMode =
             RequireValue(index, argc, argv, argument);
       } else if (argument == "--particle-pdg") {
         configuration.singleParticlePdg =
-            std::stoi(RequireValue(index, argc, argv, argument));
+            ParseStrictIntOption(RequireValue(index, argc, argv, argument), argument);
       } else if (argument == "--particle-kinetic-energy-gev") {
         configuration.singleParticleKineticEnergyGeV =
-            std::stod(RequireValue(index, argc, argv, argument));
+            ParseStrictDoubleOption(RequireValue(index, argc, argv, argument), argument);
       } else if (argument == "--particle-eta") {
         configuration.singleParticleEta =
-            std::stod(RequireValue(index, argc, argv, argument));
+            ParseStrictDoubleOption(RequireValue(index, argc, argv, argument), argument);
       } else if (argument == "--particle-phi") {
         configuration.singleParticlePhi =
-            std::stod(RequireValue(index, argc, argv, argument));
+            ParseStrictDoubleOption(RequireValue(index, argc, argv, argument), argument);
       }
     }
 
     configuration.Validate();
+
+    G4PhysListFactory physicsFactory;
+    if (!physicsFactory.IsReferencePhysList(configuration.physicsList)) {
+      throw std::runtime_error("Lista de física desconhecida: " +
+                               configuration.physicsList);
+    }
+
+    std::unique_ptr<G4VModularPhysicsList> physics(
+        physicsFactory.GetReferencePhysList(configuration.physicsList));
+    if (physics == nullptr) {
+      throw std::runtime_error("Falha ao instanciar lista de física: " +
+                               configuration.physicsList);
+    }
+
     configuration.Print(std::cout);
     if (dryRun) {
       std::cout << "Dry run concluído; nenhuma simulação foi executada.\n";
@@ -166,15 +212,8 @@ int main(int argc, char** argv) {
     runManager->SetUserInitialization(
         new pg::DetectorConstruction(configuration));
 
-    G4PhysListFactory physicsFactory;
-    G4VModularPhysicsList* physics =
-        physicsFactory.GetReferencePhysList(configuration.physicsList);
-    if (physics == nullptr) {
-      throw std::runtime_error("Lista de física desconhecida: " +
-                               configuration.physicsList);
-    }
     physics->SetDefaultCutValue(configuration.productionCutMm * mm);
-    runManager->SetUserInitialization(physics);
+    runManager->SetUserInitialization(physics.release());
     runManager->SetUserInitialization(
         new pg::ActionInitialization(configuration));
 
