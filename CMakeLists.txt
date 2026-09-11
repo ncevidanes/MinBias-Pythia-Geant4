@@ -320,6 +320,27 @@ if(BUILD_TESTING)
   )
 
   add_executable(
+    lineage_info_test
+    tests/LineageInfoTest.cc
+    src/LineageInfo.cc
+  )
+  target_include_directories(
+    lineage_info_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  pythia_enable_project_warnings(lineage_info_test)
+  target_link_libraries(
+    lineage_info_test
+    PRIVATE
+      ${Geant4_LIBRARIES}
+  )
+  add_test(
+    NAME lineage_info
+    COMMAND lineage_info_test
+  )
+
+  add_executable(
     stable_random_test
     tests/StableRandomTest.cc
   )
