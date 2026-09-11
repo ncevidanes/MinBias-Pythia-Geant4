@@ -87,6 +87,18 @@ output = single.root
 )";
 }
 
+void ExpectAccepted(const std::filesystem::path& configPath,
+                    const std::string& text) {
+  Write(configPath, text);
+  try {
+    (void)pg::Configuration::Load(configPath);
+  } catch (const std::exception& error) {
+    throw std::runtime_error(
+        "Valid boundary configuration was rejected: " +
+        std::string(error.what()));
+  }
+}
+
 void ExpectRejected(const std::filesystem::path& configPath,
                     const std::string& text,
                     const std::string& expectedMessage) {
@@ -193,6 +205,249 @@ int main() {
                            "single_particle_phi = -1.5",
                            "single_particle_phi = 4.0"),
                    "single_particle_phi");
+
+    // Structural syntax failures.
+    ExpectRejected(configPath,
+                   ValidConfiguration() +
+                       "this_line_has_no_key_value_separator\n",
+                   "esperado 'chave = valor'");
+    ExpectRejected(configPath, ValidConfiguration() + " = 1\n",
+                   "chave ou valor vazio");
+    ExpectRejected(configPath, ValidConfiguration() + "events = \n",
+                   "chave ou valor vazio");
+    ExpectRejected(configPath, ValidConfiguration() + "events = 4\n",
+                   "chave duplicada: events");
+
+    // Required PYTHIA configuration keys.
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "events = 3\n", ""),
+                   "Chave obrigatória ausente: events");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "threads = 1\n", ""),
+                   "Chave obrigatória ausente: threads");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "seed_base = 512\n", ""),
+                   "Chave obrigatória ausente: seed_base");
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "interaction_mode = poisson\n", ""),
+        "Chave obrigatória ausente: interaction_mode");
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "mean_interactions = 1.5\n", ""),
+        "Chave obrigatória ausente: mean_interactions");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(),
+                           "pythia_config = pythia.cmnd\n", ""),
+                   "Chave obrigatória ausente: pythia_config");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(),
+                           "physics_list = FTFP_BERT_ATL\n", ""),
+                   "Chave obrigatória ausente: physics_list");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "output = output.root\n", ""),
+                   "Chave obrigatória ausente: output");
+
+    // Strict boolean parsing.
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "transport_neutrinos = false",
+                "transport_neutrinos = perhaps"),
+        "Valor booleano inválido para transport_neutrinos");
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "generator_audit = true",
+                "generator_audit = enabled"),
+        "Valor booleano inválido para generator_audit");
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "check_overlaps = true",
+                "check_overlaps = maybe"),
+        "Valor booleano inválido para check_overlaps");
+
+    // Integer-domain validation.
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "events = 3", "events = 0"),
+                   "events deve ser positivo");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "threads = 1",
+                           "threads = 0"),
+                   "threads deve ser positivo");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "seed_base = 512",
+                           "seed_base = 0"),
+                   "seed_base deve ser positivo");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "first_bcid = 7",
+                           "first_bcid = -1"),
+                   "intervalo de BCIDs");
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "events = 3",
+                "events = 999999999999999999999999999999"),
+        "Valor inteiro inválido para events");
+
+    // Interaction-model validation.
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "interaction_mode = poisson",
+                "interaction_mode = random"),
+        "interaction_mode deve ser 'poisson' ou 'fixed'");
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "mean_interactions = 1.5",
+                "mean_interactions = -0.1"),
+        "mean_interactions deve ser finito e não negativo");
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "fixed_interactions = 1",
+                "fixed_interactions = -1"),
+        "fixed_interactions não pode ser negativo");
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "mean_interactions = 1.5",
+                "mean_interactions = inf"),
+        "Valor numérico inválido para mean_interactions");
+
+    // Geometry and run-control limits.
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "production_cut_mm = 1.0",
+                "production_cut_mm = 0.0"),
+        "production_cut_mm deve ser finito e positivo");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "max_abs_eta = 1.8",
+                           "max_abs_eta = 0.0"),
+                   "max_abs_eta deve estar em (0, 1.8]");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "max_abs_eta = 1.8",
+                           "max_abs_eta = 1.8001"),
+                   "max_abs_eta deve estar em (0, 1.8]");
+    ExpectRejected(configPath,
+                   Replace(ValidConfiguration(), "print_every = 1",
+                           "print_every = 0"),
+                   "print_every deve ser positivo");
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "beam_sigma_t_ns = 0.0",
+                "beam_sigma_t_ns = -0.1"),
+        "sigmas do feixe");
+
+    // File validation.
+    ExpectRejected(
+        configPath,
+        Replace(ValidConfiguration(), "pythia_config = pythia.cmnd",
+                "pythia_config = definitely-missing-pythia.cmnd"),
+        "Arquivo PYTHIA inexistente");
+
+    // Mandatory single-particle parameters.
+    ExpectRejected(
+        configPath,
+        Replace(ValidSingleParticleConfiguration(),
+                "single_particle_pdg = 11\n", ""),
+        "Chave obrigatória ausente: single_particle_pdg");
+    ExpectRejected(
+        configPath,
+        Replace(ValidSingleParticleConfiguration(),
+                "single_particle_kinetic_energy_gev = 10.0\n", ""),
+        "Chave obrigatória ausente: single_particle_kinetic_energy_gev");
+    ExpectRejected(
+        configPath,
+        Replace(ValidSingleParticleConfiguration(),
+                "single_particle_eta = 0.25\n", ""),
+        "Chave obrigatória ausente: single_particle_eta");
+    ExpectRejected(
+        configPath,
+        Replace(ValidSingleParticleConfiguration(),
+                "single_particle_phi = -1.5\n", ""),
+        "Chave obrigatória ausente: single_particle_phi");
+
+    // Valid boundary regression matrix.
+    ExpectAccepted(
+        configPath,
+        Replace(ValidConfiguration(), "events = 3", "events = 1"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidConfiguration(), "first_bcid = 7",
+                "first_bcid = 0"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(
+            Replace(ValidConfiguration(), "events = 3", "events = 1"),
+            "first_bcid = 7", "first_bcid = 2147483647"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidConfiguration(), "seed_base = 512",
+                "seed_base = 1"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidConfiguration(), "mean_interactions = 1.5",
+                "mean_interactions = 0.0"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidConfiguration(), "fixed_interactions = 1",
+                "fixed_interactions = 0"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidConfiguration(), "production_cut_mm = 1.0",
+                "production_cut_mm = 1e-300"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidConfiguration(), "transport_neutrinos = false",
+                "transport_neutrinos = yes"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidConfiguration(), "generator_audit = true",
+                "generator_audit = 1"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidConfiguration(), "check_overlaps = true",
+                "check_overlaps = 0"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidSingleParticleConfiguration(),
+                "single_particle_pdg = 11",
+                "single_particle_pdg = -11"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidSingleParticleConfiguration(),
+                "single_particle_kinetic_energy_gev = 10.0",
+                "single_particle_kinetic_energy_gev = 1e-300"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidSingleParticleConfiguration(),
+                "single_particle_eta = 0.25",
+                "single_particle_eta = 1.8"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidSingleParticleConfiguration(),
+                "single_particle_eta = 0.25",
+                "single_particle_eta = -1.8"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidSingleParticleConfiguration(),
+                "single_particle_phi = -1.5",
+                "single_particle_phi = 3.14159265358979323846"));
+
+    ExpectAccepted(
+        configPath,
+        Replace(ValidSingleParticleConfiguration(),
+                "single_particle_phi = -1.5",
+                "single_particle_phi = -3.14159265358979323846"));
 
     std::cout << "Configuration tests passed" << std::endl;
     return 0;

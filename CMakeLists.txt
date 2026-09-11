@@ -357,6 +357,14 @@ if(BUILD_TESTING)
   pythia_enable_project_warnings(configuration_test)
   add_test(NAME configuration COMMAND configuration_test)
 
+  add_test(
+    NAME cli_invalid_inputs
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_cli_invalid_inputs.py"
+      --binary "$<TARGET_FILE:pythia_geant>"
+      --config "${PROJECT_SOURCE_DIR}/config/smoke.conf"
+  )
+
   add_executable(
     single_particle_kinematics_test
     tests/SingleParticleKinematicsTest.cc
