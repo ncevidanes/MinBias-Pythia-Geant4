@@ -304,6 +304,22 @@ if(BUILD_TESTING)
   )
 
   add_executable(
+    event_state_behavior_test
+    tests/EventStateBehaviorTest.cc
+    src/EventState.cc
+  )
+  target_include_directories(
+    event_state_behavior_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  pythia_enable_project_warnings(event_state_behavior_test)
+  add_test(
+    NAME event_state_behavior
+    COMMAND event_state_behavior_test
+  )
+
+  add_executable(
     stable_random_test
     tests/StableRandomTest.cc
   )
