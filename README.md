@@ -256,6 +256,14 @@ As evidências estão em `docs/cycle-11-partition-stable-production/`.
 
 Além da TTree `metadata`, o programa grava `<saida>.manifest.txt` como representação legível da configuração resolvida.
 
+## Operação, falhas e qualidade
+
+Os contratos de publicação transacional, interrupção por sinais, limpeza em falha e recuperação de artefatos residuais estão em `docs/operations/failure-contracts.md`.
+
+Os contratos canônicos de build, CTest, warnings, testes negativos, `clang-format`, `clang-tidy` e coverage estão em `docs/operations/quality-gates.md`.
+
+A organização dos workflows de integração contínua está documentada em `docs/continuous-integration.md`.
+
 ## Inspeção rápida
 
 ```bash
@@ -282,6 +290,9 @@ evidências são gravadas sob `outputs/`, que não é versionado.
 
 Leia também:
 
+- `docs/operations/failure-contracts.md`;
+- `docs/operations/quality-gates.md`;
+- `docs/continuous-integration.md`;
 - `docs/ARCHITECTURE.md`;
 - `docs/VALIDATION.md`;
 - `docs/PROVENANCE_AUDIT.md`;
