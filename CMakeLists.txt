@@ -433,6 +433,13 @@ if(BUILD_TESTING)
   )
 
   add_test(
+    NAME single_particle_analyzer_cli
+    COMMAND "${Python3_EXECUTABLE}" -B
+      "${PROJECT_SOURCE_DIR}/tests/test_single_particle_analyzer_cli.py"
+      --binary "$<TARGET_FILE:single_particle_analyzer>"
+  )
+
+  add_test(
     NAME statistical_aggregator
     COMMAND "${Python3_EXECUTABLE}" -B
       "${PROJECT_SOURCE_DIR}/tests/test_statistical_aggregator.py"
