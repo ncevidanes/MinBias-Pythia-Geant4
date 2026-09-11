@@ -153,7 +153,9 @@ add_executable(
   src/DetectorConstruction.cc
   src/EventAction.cc
   src/EventState.cc
+  src/Interruption.cc
   src/LineageInfo.cc
+  src/OutputTransaction.cc
   src/PrimaryGeneratorAction.cc
   src/RootOutput.cc
   src/RunAction.cc
@@ -393,6 +395,38 @@ if(BUILD_TESTING)
   )
   pythia_enable_project_warnings(configuration_test)
   add_test(NAME configuration COMMAND configuration_test)
+
+  add_executable(
+    output_transaction_test
+    tests/OutputTransactionTest.cc
+    src/OutputTransaction.cc
+  )
+  target_include_directories(
+    output_transaction_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  pythia_enable_project_warnings(output_transaction_test)
+  add_test(
+    NAME output_transaction
+    COMMAND output_transaction_test
+  )
+
+  add_executable(
+    interruption_test
+    tests/InterruptionTest.cc
+    src/Interruption.cc
+  )
+  target_include_directories(
+    interruption_test
+    PRIVATE
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  pythia_enable_project_warnings(interruption_test)
+  add_test(
+    NAME interruption
+    COMMAND interruption_test
+  )
 
   add_test(
     NAME cli_invalid_inputs

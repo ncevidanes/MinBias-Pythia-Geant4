@@ -106,6 +106,18 @@ add_lightweight_cpp_test(
 )
 
 add_lightweight_cpp_test(
+  output_transaction
+  "${REPOSITORY_ROOT}/tests/OutputTransactionTest.cc"
+  "${REPOSITORY_ROOT}/src/OutputTransaction.cc"
+)
+
+add_lightweight_cpp_test(
+  interruption
+  "${REPOSITORY_ROOT}/tests/InterruptionTest.cc"
+  "${REPOSITORY_ROOT}/src/Interruption.cc"
+)
+
+add_lightweight_cpp_test(
   single_particle_kinematics
   "${REPOSITORY_ROOT}/tests/SingleParticleKinematicsTest.cc"
 )
