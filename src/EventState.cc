@@ -92,4 +92,3 @@ void EventState::RecordDeposit(const CellKey& key, const int subdetector,
 }
 
 }  // namespace pg
-

@@ -192,7 +192,8 @@ SingleParticleAnalysisSummary AnalyzeSingleParticleRecords(
 
   std::vector<double> hitEnergyByEvent(events.size(), 0.0);
   std::array<std::vector<double>,
-             kSingleParticleSamplingCount> energyBySampling;
+             kSingleParticleSamplingCount>
+      energyBySampling;
   for (auto& values : energyBySampling) {
     values.assign(events.size(), 0.0);
   }
@@ -201,9 +202,11 @@ SingleParticleAnalysisSummary AnalyzeSingleParticleRecords(
   LinearMoments etaMoments;
   PhiMoments phiMoments;
   std::array<LinearMoments,
-             kSingleParticleSamplingCount> samplingEtaMoments;
+             kSingleParticleSamplingCount>
+      samplingEtaMoments;
   std::array<PhiMoments,
-             kSingleParticleSamplingCount> samplingPhiMoments;
+             kSingleParticleSamplingCount>
+      samplingPhiMoments;
 
   for (const auto& hit : hits) {
     const auto eventIterator = eventIndices.find(hit.event);

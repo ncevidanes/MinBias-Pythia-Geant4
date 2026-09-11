@@ -296,16 +296,20 @@ void PrimaryGeneratorAction::GenerateSingleParticle(G4Event* event) {
   auto* vertex = new G4PrimaryVertex(
       DrawGaussian(
           state.bcid, 0, SeedStream::kVertexX,
-          configuration_.beamSigmaXmm) * mm,
+          configuration_.beamSigmaXmm) *
+          mm,
       DrawGaussian(
           state.bcid, 0, SeedStream::kVertexY,
-          configuration_.beamSigmaYmm) * mm,
+          configuration_.beamSigmaYmm) *
+          mm,
       DrawGaussian(
           state.bcid, 0, SeedStream::kVertexZ,
-          configuration_.beamSigmaZmm) * mm,
+          configuration_.beamSigmaZmm) *
+          mm,
       DrawGaussian(
           state.bcid, 0, SeedStream::kVertexT,
-          configuration_.beamSigmaTns) * ns);
+          configuration_.beamSigmaTns) *
+          ns);
   vertex->SetPrimary(primary);
   event->AddPrimaryVertex(vertex);
   ++state.transportedParticles;

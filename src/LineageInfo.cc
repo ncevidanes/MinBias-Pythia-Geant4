@@ -25,4 +25,3 @@ void TrackLineageInfo::Print() const {
 }
 
 }  // namespace pg
-

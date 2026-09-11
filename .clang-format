@@ -1,0 +1,27 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+
+Standard: c++17
+
+IndentWidth: 2
+ContinuationIndentWidth: 4
+UseTab: Never
+
+# Preserve existing manual line-breaking as much as possible.
+ColumnLimit: 0
+
+BreakBeforeBraces: Attach
+
+NamespaceIndentation: None
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+SortIncludes:
+  Enabled: false
+
+FixNamespaceComments: false
+ReflowComments: Never
+BreakStringLiterals: false
+...

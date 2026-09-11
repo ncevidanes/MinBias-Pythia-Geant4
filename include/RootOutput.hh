@@ -49,4 +49,3 @@ class RootOutput {
 }  // namespace pg
 
 #endif
-

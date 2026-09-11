@@ -1,0 +1,17 @@
+---
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  performance-*,
+  -performance-enum-size,
+  -performance-avoid-endl,
+  portability-*
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '^.*/include/.*$'
+SystemHeaders: false
+FormatStyle: file
+InheritParentConfig: false
+...

@@ -419,4 +419,3 @@ void RootOutput::WriteEventAndHits(const Configuration& configuration) {
 }
 
 }  // namespace pg
-

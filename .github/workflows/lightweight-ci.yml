@@ -12,6 +12,115 @@ permissions:
   contents: read
 
 jobs:
+  quality:
+    name: clang-format 21 and lightweight clang-tidy 21
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+
+    env:
+      CC: gcc-14
+      CXX: g++-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Verify quality toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          clang-format-21 --version
+          clang-tidy-21 --version
+          gcc-14 --version | head -n 1
+          g++-14 --version | head -n 1
+
+          clang-format-21 --version | grep -E 'version 21\.'
+          clang-tidy-21 --version | grep -E 'version 21\.'
+
+      - name: Check C++ formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t files < <(
+            git ls-files |
+              grep -E '\.(c|cc|cpp|cxx|h|hh|hpp|hxx)$'
+          )
+
+          echo "TRACKED_CPP_FILE_COUNT=${#files[@]}"
+
+          test "${#files[@]}" -eq 46
+
+          clang-format-21 \
+            --dry-run \
+            --Werror \
+            --style=file \
+            "${files[@]}"
+
+      - name: Configure lightweight analysis database
+        run: >
+          cmake
+          -S ci/lightweight
+          -B build-quality
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run lightweight clang-tidy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY' > /tmp/lightweight-tus.txt
+          import json
+          import pathlib
+
+          root = pathlib.Path.cwd().resolve()
+          database = root / "build-quality" / "compile_commands.json"
+
+          with database.open(encoding="utf-8") as handle:
+              entries = json.load(handle)
+
+          files = set()
+
+          for entry in entries:
+              path = pathlib.Path(entry["file"])
+
+              if not path.is_absolute():
+                  path = pathlib.Path(entry["directory"]) / path
+
+              path = path.resolve()
+
+              try:
+                  path.relative_to(root)
+              except ValueError:
+                  continue
+
+              if path.suffix.lower() in {".c", ".cc", ".cpp", ".cxx"}:
+                  files.add(path)
+
+          for path in sorted(files):
+              print(path)
+          PY
+
+          tu_count="$(awk 'END {print NR+0}' /tmp/lightweight-tus.txt)"
+
+          echo "LIGHTWEIGHT_TRANSLATION_UNIT_COUNT=$tu_count"
+
+          test "$tu_count" -eq 15
+
+          while IFS= read -r file; do
+            test -n "$file" || continue
+
+            echo "CLANG_TIDY_FILE=$file"
+
+            clang-tidy-21 \
+              "$file" \
+              -p build-quality \
+              --quiet \
+              --warnings-as-errors='*'
+          done < /tmp/lightweight-tus.txt
+
   lightweight:
     name: C++17 and Python lightweight tests
     runs-on: ubuntu-24.04

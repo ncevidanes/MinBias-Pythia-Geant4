@@ -67,4 +67,3 @@ class EventState {
 }  // namespace pg
 
 #endif
-

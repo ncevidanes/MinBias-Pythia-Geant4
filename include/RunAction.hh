@@ -23,4 +23,3 @@ class RunAction final : public G4UserRunAction {
 }  // namespace pg
 
 #endif
-

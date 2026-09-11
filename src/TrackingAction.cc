@@ -9,6 +9,8 @@
 
 namespace pg {
 
+// Geant4 takes ownership of G4VUserTrackInformation attached to a track.
+// NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks)
 void TrackingAction::PreUserTrackingAction(const G4Track* track) {
   if (track->GetUserInformation() != nullptr || track->GetParentID() != 0) {
     return;
@@ -27,6 +29,7 @@ void TrackingAction::PreUserTrackingAction(const G4Track* track) {
         new TrackLineageInfo(*primaryInfo));
   }
 }
+// NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
 
 void TrackingAction::PostUserTrackingAction(const G4Track* track) {
   const auto* parentInfo =

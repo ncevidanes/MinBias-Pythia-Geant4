@@ -33,4 +33,3 @@ class DetectorConstruction final : public G4VUserDetectorConstruction {
 }  // namespace pg
 
 #endif
-

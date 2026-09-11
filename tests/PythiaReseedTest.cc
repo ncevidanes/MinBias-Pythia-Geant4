@@ -32,24 +32,23 @@ struct ParticleSnapshot {
   double tProd = 0.0;
 
   bool operator==(const ParticleSnapshot& other) const {
-    return
-        id == other.id &&
-        status == other.status &&
-        mother1 == other.mother1 &&
-        mother2 == other.mother2 &&
-        daughter1 == other.daughter1 &&
-        daughter2 == other.daughter2 &&
-        isFinal == other.isFinal &&
-        isVisible == other.isVisible &&
-        px == other.px &&
-        py == other.py &&
-        pz == other.pz &&
-        e == other.e &&
-        m == other.m &&
-        xProd == other.xProd &&
-        yProd == other.yProd &&
-        zProd == other.zProd &&
-        tProd == other.tProd;
+    return id == other.id &&
+           status == other.status &&
+           mother1 == other.mother1 &&
+           mother2 == other.mother2 &&
+           daughter1 == other.daughter1 &&
+           daughter2 == other.daughter2 &&
+           isFinal == other.isFinal &&
+           isVisible == other.isVisible &&
+           px == other.px &&
+           py == other.py &&
+           pz == other.pz &&
+           e == other.e &&
+           m == other.m &&
+           xProd == other.xProd &&
+           yProd == other.yProd &&
+           zProd == other.zProd &&
+           tProd == other.tProd;
   }
 };
 

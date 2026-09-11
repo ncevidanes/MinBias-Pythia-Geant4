@@ -381,7 +381,6 @@ void CheckOperationalCollisionDomain() {
       "Unexpected mapped-PYTHIA domain size");
 }
 
-
 }  // namespace
 
 int main() {

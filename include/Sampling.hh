@@ -55,4 +55,3 @@ std::string SamplingName(int id);
 }  // namespace pg
 
 #endif
-

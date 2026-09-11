@@ -49,32 +49,27 @@ int main() {
 
     Require(
         std::string(
-            pg::kGeant4TransportSeedPolicyName)
-            == "event-stable-v1",
+            pg::kGeant4TransportSeedPolicyName) == "event-stable-v1",
         "Unexpected transport seed policy");
 
     Require(
         std::string(
-            pg::kGeant4TransportSeedIdentityName)
-            == "bcid",
+            pg::kGeant4TransportSeedIdentityName) == "bcid",
         "Unexpected transport seed identity");
 
     Require(
         std::string(
-            pg::kGeant4TransportSeedMixerName)
-            == "splitmix64-v1",
+            pg::kGeant4TransportSeedMixerName) == "splitmix64-v1",
         "Unexpected transport seed mixer");
 
     Require(
         std::string(
-            pg::kGeant4TransportSeedStreamName)
-            == "transport-event",
+            pg::kGeant4TransportSeedStreamName) == "transport-event",
         "Unexpected transport stream name");
 
     Require(
         std::string(
-            pg::kGeant4TransportReseedScopeName)
-            == "event-before-tracking",
+            pg::kGeant4TransportReseedScopeName) == "event-before-tracking",
         "Unexpected transport reseed scope");
 
     RequireEqual64(
@@ -148,7 +143,6 @@ int main() {
     for (std::uint64_t bcid = 0;
          bcid < 100000ULL;
          ++bcid) {
-
       const int seed =
           pg::TransportSeedForStableTuple(
               9512ULL,
@@ -190,7 +184,6 @@ int main() {
     return 0;
 
   } catch (const std::exception& error) {
-
     std::cerr
         << "Transport seed policy test failed: "
         << error.what()

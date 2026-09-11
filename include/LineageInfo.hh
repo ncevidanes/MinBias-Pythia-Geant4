@@ -37,4 +37,3 @@ class TrackLineageInfo final : public G4VUserTrackInformation {
 }  // namespace pg
 
 #endif
-

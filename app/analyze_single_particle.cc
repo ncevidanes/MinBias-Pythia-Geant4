@@ -45,9 +45,8 @@ struct Metadata {
 };
 
 std::string Usage() {
-  return
-      "Usage: single_particle_analyzer --input <file.root> "
-      "--summary-csv <summary.csv> --sampling-csv <samplings.csv>";
+  return "Usage: single_particle_analyzer --input <file.root> "
+         "--summary-csv <summary.csv> --sampling-csv <samplings.csv>";
 }
 
 Options ParseOptions(const int argc, char* argv[]) {
