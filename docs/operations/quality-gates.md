@@ -22,7 +22,7 @@ The quality contract covers:
 - `clang-format`;
 - `clang-tidy`;
 - code coverage;
-- interpretation of sanitizer status;
+- permanent CPU sanitizer validation;
 - local pre-merge verification.
 
 Runtime failure and output-publication behavior are documented
@@ -267,35 +267,17 @@ causes the quality gate to fail.
 The 19-translation-unit expectation is a structural guard and must be
 reviewed if the lightweight project changes intentionally.
 
-## 9. Sanitizer status
+## 9. Permanent CPU sanitizer gate
 
-AddressSanitizer and UndefinedBehaviorSanitizer are useful diagnostic
-tools, but they are not permanent tracked gates in the current
-repository baseline.
+AddressSanitizer and UndefinedBehaviorSanitizer are permanent tracked quality gates.
 
-The Cycle 13.7 audit found no tracked references to:
+The top-level CMake option `PYTHIA_ENABLE_SANITIZERS` is disabled by default and enables `-fsanitize=address,undefined`, `-fno-omit-frame-pointer` and `-fno-sanitize-recover=all` for supported GNU GCC and Clang builds.
 
-```text
--fsanitize
-AddressSanitizer
-UndefinedBehaviorSanitizer
-ASAN_OPTIONS
-UBSAN_OPTIONS
-```
+The permanent CI implementation is `.github/workflows/sanitizer-ci.yml`. It uses the controlled HEP environment and requires the canonical 36-test full-project CTest inventory.
 
-in the current project configuration or workflows.
+ASan and UBSan operate in fail-fast mode. LeakSanitizer reporting is disabled because the executable links against externally built HEP libraries whose process-lifetime allocations are outside this repository ownership boundary. Address-safety checks remain enabled.
 
-Consequently, this document does not claim that every pull request or
-production build is automatically validated by ASan or UBSan.
-
-A sanitizer run performed during a development cycle is evidence for
-that particular validation, but it must not be described as a
-continuously enforced repository gate unless its configuration becomes
-tracked.
-
-If sanitizer enforcement is added in the future, its compiler flags,
-runtime options, test scope, platform, and CI behavior must be
-documented explicitly.
+A project-owned ASan or UBSan diagnostic is a quality-gate failure.
 
 ## 10. Coverage gate
 
@@ -373,12 +355,13 @@ not be assumed automatically equivalent to the canonical baseline.
 
 ## 12. CI workflows
 
-The current repository tracks two GitHub Actions workflows relevant to
+The current repository tracks three GitHub Actions workflows relevant to
 this quality contract:
 
 ```text
 .github/workflows/lightweight-ci.yml
 .github/workflows/coverage-ci.yml
+.github/workflows/sanitizer-ci.yml
 ```
 
 The lightweight workflow provides:
