@@ -1,10 +1,11 @@
 # Continuous integration
 
-The repository uses two complementary GitHub Actions workflows:
+The repository uses three complementary GitHub Actions workflows:
 
 - `lightweight-ci.yml` for fast dependency-reduced regression and
   source-quality checks;
-- `coverage-ci.yml` for canonical full-stack coverage validation.
+- `coverage-ci.yml` for canonical full-stack coverage validation;
+- `sanitizer-ci.yml` for permanent full-stack ASan/UBSan validation.
 
 These workflows serve different purposes and must not be interpreted
 as equivalent validation environments.
@@ -112,9 +113,7 @@ manual recovery are documented separately in:
 docs/operations/failure-contracts.md
 ```
 
-AddressSanitizer and UndefinedBehaviorSanitizer are not currently
-tracked permanent CI gates. Historical sanitizer validation must not be
-described as automatically enforced repository behavior.
+AddressSanitizer and UndefinedBehaviorSanitizer are now enforced by the tracked `sanitizer-ci.yml` workflow. The workflow enables `PYTHIA_ENABLE_SANITIZERS=ON`, verifies the canonical 36-test inventory and runs the full CTest suite under fail-fast ASan and UBSan settings. Normal builds remain unsanitized by default.
 
 ## Rationale
 

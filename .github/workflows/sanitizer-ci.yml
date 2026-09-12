@@ -1,0 +1,142 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+name: Sanitizer CI
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    paths:
+      - "CMakeLists.txt"
+      - "app/**"
+      - "src/**"
+      - "include/**"
+      - "tests/**"
+      - "config/**"
+      - "cmake/**"
+      - "ci/coverage-environment.yml"
+      - ".github/workflows/sanitizer-ci.yml"
+
+  push:
+    branches:
+      - master
+    paths:
+      - "CMakeLists.txt"
+      - "app/**"
+      - "src/**"
+      - "include/**"
+      - "tests/**"
+      - "config/**"
+      - "cmake/**"
+      - "ci/coverage-environment.yml"
+      - ".github/workflows/sanitizer-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sanitizer-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sanitizers:
+    name: GCC 14 ASan + UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Create full HEP sanitizer environment
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          environment-file: ci/coverage-environment.yml
+          init-shell: bash
+          cache-environment: true
+          cache-downloads: false
+
+      - name: Verify scientific toolchain
+        run: |
+          set -euo pipefail
+
+          geant4_version="$(
+            micromamba list geant4 |
+              awk '$1 == "geant4" {print $2}'
+          )"
+
+          echo "GCC_VERSION=$(gcc -dumpfullversion)"
+          echo "GXX_VERSION=$(g++ -dumpfullversion)"
+          echo "ROOT_VERSION=$(root-config --version)"
+          echo "PYTHIA8_VERSION=$(pythia8-config --version)"
+          echo "GEANT4_VERSION=$geant4_version"
+
+          test "$(gcc -dumpfullversion)" = "14.3.0"
+          test "$(g++ -dumpfullversion)" = "14.3.0"
+          test "$(root-config --version)" = "6.36.06"
+          test "$(pythia8-config --version)" = "8.312"
+          test "$geant4_version" = "11.3.2"
+
+          echo "SANITIZER_TOOLCHAIN_GATE=PASS"
+
+      - name: Configure sanitizer build
+        run: |
+          set -euo pipefail
+
+          cmake \
+            -S . \
+            -B build-sanitizers \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DPYTHIA_ENABLE_SANITIZERS=ON
+
+          grep -Fx \
+            'PYTHIA_ENABLE_SANITIZERS:BOOL=ON' \
+            build-sanitizers/CMakeCache.txt
+
+          echo "SANITIZER_CONFIGURATION_GATE=PASS"
+
+      - name: Build instrumented project
+        run: |
+          set -euo pipefail
+
+          cmake \
+            --build build-sanitizers \
+            --parallel 2
+
+          echo "SANITIZER_BUILD_GATE=PASS"
+
+      - name: Verify canonical CTest inventory
+        run: |
+          set -euo pipefail
+
+          test_count="$(
+            ctest --test-dir build-sanitizers -N |
+              sed -n 's/^Total Tests: //p' |
+              tail -n 1
+          )"
+
+          echo "SANITIZER_REGISTERED_TESTS=$test_count"
+
+          test "$test_count" = "36"
+
+          echo "SANITIZER_TEST_INVENTORY_GATE=PASS"
+
+      - name: Run ASan and UBSan suite
+        env:
+          ASAN_OPTIONS: "halt_on_error=1:abort_on_error=1:detect_leaks=0:strict_string_checks=1"
+          UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+        run: |
+          set -euo pipefail
+
+          ctest \
+            --test-dir build-sanitizers \
+            --output-on-failure \
+            --no-tests=error
+
+          echo "ASAN_GATE=PASS"
+          echo "UBSAN_GATE=PASS"
+          echo "SANITIZER_CTEST_GATE=PASS"

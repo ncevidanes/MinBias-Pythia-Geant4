@@ -6,6 +6,40 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(
+  PYTHIA_SANITIZER_FLAGS
+  -fsanitize=address,undefined
+  -fno-omit-frame-pointer
+  -fno-sanitize-recover=all
+)
+
+option(
+  PYTHIA_ENABLE_SANITIZERS
+  "Enable AddressSanitizer and UndefinedBehaviorSanitizer for project targets"
+  OFF
+)
+
+if(PYTHIA_ENABLE_SANITIZERS)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang)$")
+    message(FATAL_ERROR
+      "PYTHIA_ENABLE_SANITIZERS requires GNU GCC or Clang")
+  endif()
+
+  add_compile_options(
+    ${PYTHIA_SANITIZER_FLAGS}
+  )
+
+  add_link_options(
+    -fsanitize=address,undefined
+    -fno-sanitize-recover=all
+  )
+
+  message(
+    STATUS
+    "CPU sanitizers enabled: AddressSanitizer + UndefinedBehaviorSanitizer"
+  )
+endif()
+
 find_package(Geant4 11.2 REQUIRED)
 include(${Geant4_USE_FILE})
 
