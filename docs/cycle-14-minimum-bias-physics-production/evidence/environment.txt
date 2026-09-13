@@ -1,0 +1,10 @@
+baseline_git_commit=e4bbde6c12f430e81e2bc843b998ae2ec6b707e2
+feature_branch=cycle-14.1-physics-contract-freeze
+logical_cpus=12
+mem_total_kb=7293688
+mem_available_kb=2499664
+filesystem_available_kb=485294728
+cmake_version=cmake version 4.2.3
+root_version=6.36.06
+pythia_version=8.312
+geant4_version=11.3.2

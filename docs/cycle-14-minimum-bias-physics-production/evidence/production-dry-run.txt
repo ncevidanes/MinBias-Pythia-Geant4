@@ -1,0 +1,41 @@
+G4PhysListFactory::GetReferencePhysList <FTFP_BERT_ATL>  EMoption= 0
+<<< Geant4 Physics List simulation engine: FTFP_BERT_ATL
+
+*=====================================================================
+*                                                                     
+*   The Physics list FTFP_BERT_ATL is an experimental physics list !   
+*                                                                      
+*   Please  report your use case for, and your experience with this    
+*    physics list on the Geant4 User Forum dedicated to physics lists: 
+*  http://hypernews.slac.stanford.edu/HyperNews/geant4/get/phys-list.html
+*                                                                      
+*=====================================================================*
+
+
+config = "/run/media/nelsonassis/BackUp_Nelson/Doutorado/Pythia/PythiaGeantOneStage_V06/config/production.conf"
+generator_mode = pythia
+events = 3000
+first_bcid = 0
+threads = 1
+seed_base = 512
+interaction_mode = poisson
+mean_interactions = 50
+fixed_interactions = 1
+pythia_config = "/run/media/nelsonassis/BackUp_Nelson/Doutorado/Pythia/PythiaGeantOneStage_V06/config/pythia_minbias.cmnd"
+physics_list = FTFP_BERT_ATL
+production_cut_mm = 1
+beam_sigma_x_mm = 0
+beam_sigma_y_mm = 0
+beam_sigma_z_mm = 0
+beam_sigma_t_ns = 0
+max_abs_eta = 1.8
+transport_neutrinos = false
+generator_audit = false
+check_overlaps = false
+print_every = 10
+single_particle_pdg = 11
+single_particle_kinetic_energy_gev = 10
+single_particle_eta = 0
+single_particle_phi = 0
+output = "/run/media/nelsonassis/BackUp_Nelson/Doutorado/Pythia/PythiaGeantOneStage_V06/outputs/minbias_mu50.root"
+Dry run concluído; nenhuma simulação foi executada.
