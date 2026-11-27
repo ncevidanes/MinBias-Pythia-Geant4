@@ -3,8 +3,9 @@
 ## Status
 
 Proposta em revisão. Nenhuma alteração de código, configuração ou evidência
-é feita por este documento. Três decisões continuam pendentes e estão
-listadas na seção 7.
+é feita por este documento. As decisões D1 a D3 foram tomadas em 2026-11-26
+e estão registradas na seção 7. A escolha da ordem (seção 4) continua
+pendente.
 
 Objetivo: um simulador de minimum bias completo e focado, com comandos
 simples e inteligíveis.
@@ -23,8 +24,10 @@ Categorias:
 - (b) evidência histórica de validação, que precisa continuar reproduzível;
 - (c) fora do escopo.
 
-A categoria (c) está vazia: nenhum arquivo das pastas inventariadas deixa de
-servir ao núcleo ou a algum ciclo de validação.
+Nenhum arquivo das pastas inventariadas cai na categoria (c): todos servem ao
+núcleo ou a algum ciclo de validação. Pela decisão D3, a categoria (c)
+contém uma capacidade, não um arquivo: a digitização (forma de pulso, ruído,
+ADC, filtro ótimo) fica com outra ferramenta da cadeia de leitura.
 
 ### Onde ficam os itens (b)
 
@@ -58,7 +61,7 @@ Todos (a), exceto:
 `SingleParticleKinematics.hh` e os ramos de partícula única em
 `PrimaryGeneratorAction`, `Configuration` e `RootOutput` ficam em (a) por
 necessidade: retirá-los muda o schema 4 (colunas 37 a 41 de `metadata`).
-Ver a decisão D1.
+Pela decisão D1, permanecem no código.
 
 ### scripts/
 
@@ -141,7 +144,7 @@ V: verificado no código. D: dedução, com a base indicada.
 | 3 | Região luminosa parcial: quatro gaussianas independentes por subevento, centradas em zero, sem correlação z–t, sem ângulo de cruzamento e sem deslocamento. Os sigmas nominais são 0, e o contrato proíbe substituí-los sem revisão. | V | `DrawStableVertexGaussian`, `config/production.conf`, `physics-contract.md` |
 | 4 | Saída por célula e por BC parcial: `hits` é esparso por `(bcid, subevent, célula)`; o total por BC exige somar subeventos fora do simulador; células sem depósito não aparecem e o ROOT não traz mapa de células, então não é possível enumerá-las sem o código de `CellSegmentation`. `cell_id` é gravado como double. | V | `src/RootOutput.cc` (linhas 60 a 79), `EventState::RecordDeposit` |
 | 5 | Apenas energia visível, sem fração de amostragem nem calibração. | V | O detector sensível só é associado aos volumes ativos em `DetectorConstruction.cc` |
-| 6 | Não há digitização: forma de pulso, ruído, ADC, filtro ótimo. | V (ausência) | Nenhuma ocorrência em `src/` e `include/`. Escopo em aberto: decisão D3 |
+| 6 | Não há digitização: forma de pulso, ruído, ADC, filtro ótimo. Fora do escopo pela decisão D3; deixa de ser lacuna. O que resta como lacuna é a interface: a saída por célula e por BC (item 4) precisa ser consumível pela ferramenta de digitização. | V (ausência) | Nenhuma ocorrência em `src/` e `include/` |
 | 7 | Não há campo magnético nem material antes do calorímetro. | V | O mundo é vácuo e `ConstructSDandField` só registra detectores sensíveis. D: sem o solenoide, partículas carregadas de baixo pT chegam ao calorímetro; o efeito não foi medido |
 | 8 | Cobertura limitada a \|eta\| ≤ 1.8, sem EMEC, HEC e FCal. | V | `Configuration::Validate`, README |
 | 9 | O tune do PYTHIA não é fixado. | V/D | V: `pythia_minbias.cmnd` não tem `Tune:pp`. D: vale o padrão do PYTHIA 8.312 (Monash, segundo o manual, a conferir), não o A3 usado pelo ATLAS para pile-up |
@@ -216,11 +219,10 @@ Arquivos do inventário `physics-contract-files.sha256` tocados:
 
 - PRs 15.1 a 15.6: nenhum.
 - PR 15.7 (`--first-bcid`): `app/main.cc`.
-- Se a decisão D1 for remover o modo de partícula única: também
-  `include/Configuration.hh`, `src/Configuration.cc`,
-  `src/PrimaryGeneratorAction.cc`, `src/RootOutput.cc` e
-  `include/RootSchema.hh`. Isso cria o schema 5, que o contrato lista
-  explicitamente como motivo de revisão.
+
+Como a decisão D1 mantém o modo de partícula única, `Configuration`,
+`PrimaryGeneratorAction`, `RootOutput` e `RootSchema` não são tocados e o
+schema 4 se mantém.
 
 Efeito indireto: `production-contract-ctest.txt` executa testes que vão para
 `validation/` (`integrated_minbias_*`, `performance_*`, `partition_*`). Depois
@@ -231,6 +233,9 @@ numeração, mesmo sem mudança de hash.
 
 Produção de 3000 BCs com μ = 50 na tag `cycle-14.1-pre-reorganization`, com
 `./run.sh config/production.conf`; reorganização depois.
+
+Pré-requisito atendido: pela decisão D2, o gate do Ciclo 14.1 já passou, e
+esta ordem pode começar imediatamente.
 
 Custo: a proveniência da produção aponta para o commit anterior e para a
 interface `run.sh`. A equivalência da reorganização é provada contra um
@@ -297,7 +302,7 @@ Hashes dos ROOT, logs e resultados ficam em
 
 | PR | Conteúdo | Prova |
 |---|---|---|
-| 15.0 | Tag `cycle-14.1-pre-reorganization` em `51240a8`; este plano; `docs/cycle-15-reorganization/contract.md` com a seção 5 | Apenas documentação; hashes aprovados |
+| 15.0 | Tag `cycle-14.1-pre-reorganization` em `51240a8`; este plano; `docs/cycle-15-reorganization/contract.md` com a seção 5; registro do fechamento do gate do Ciclo 14.1 (decisão D2) | Apenas documentação; hashes aprovados |
 | 15.1 | Lista de exclusão opcional em `compare_root.C`, com teste | A contra A sem exclusão: PASS; A contra B com `{git_commit, git_describe}`: PASS; CTest 37 |
 | 15.2 | Script `minbias` com os quatro subcomandos, testes de parsing e de entradas inválidas, verificação do commit do build | C1 a C5, chamada direta contra `minbias`, idênticos; CTest 38 |
 | 15.3 | Partícula única para `validation/cycle-06/`: analisador, biblioteca, teste C++, scripts, testes e `.conf`; caminhos no CMake e em `ci/lightweight` | Seção 5 completa; contagem do CTest inalterada; CSVs de C4 idênticos |
@@ -306,14 +311,22 @@ Hashes dos ROOT, logs e resultados ficam em
 | 15.6 | `run.sh` documentado como motor legado das campanhas históricas, sem mudança de código | `bash -n` e `audit_release.sh` |
 | 15.7 | Opcional: `--first-bcid` em `main.cc` e em `minbias run`; revisão do inventário de hashes | Seção 5 e gate completo do Ciclo 14; a posição depende da escolha da seção 4 |
 
-## 7. Decisões pendentes
+## 7. Decisões
 
-- **D1. Modo de partícula única.** Proposta: manter no código como modo de
-  validação, fora da interface `minbias`. Alternativa: remover, o que cria o
-  schema 5 e exige revisão do contrato.
-- **D2. Gate do Ciclo 14.1.** `physics-contract.md` ainda se declara
-  candidato ao congelamento e proíbe produção em larga escala até o gate
-  completo. Se o gate não passou, a ordem P depende dele primeiro.
-- **D3. Digitização.** Forma de pulso, ruído e ADC pertencem a este
-  simulador ou a outra ferramenta da cadeia de leitura? A resposta decide se
-  a lacuna 6 é lacuna ou categoria (c).
+Tomadas pelo responsável pelo projeto em 2026-11-26.
+
+- **D1. Modo de partícula única: manter no código.** Fica como modo de
+  validação, acessível por `--config`, fora da interface `minbias`. Nenhum
+  hash do contrato muda por causa dele, e o schema 4 se mantém.
+- **D2. Gate do Ciclo 14.1: já passou.** A produção em larga escala está
+  autorizada, e a ordem P não tem pré-requisito pendente. Observação: no
+  commit `51240a8`, `physics-contract.md` ainda se declara candidato ao
+  congelamento, e o repositório não contém o registro do fechamento do gate.
+  Esse registro deve entrar no PR 15.0 ou antes da produção, para que a
+  autorização fique rastreável.
+- **D3. Digitização: fora do escopo.** Forma de pulso, ruído, ADC e filtro
+  ótimo ficam com outra ferramenta da cadeia de leitura. A lacuna 6 passa à
+  categoria (c), e a saída por célula e por BC (lacuna 4) passa a ser a
+  interface com essa ferramenta.
+
+Pendente: a escolha entre as ordens P, R1 e R2 (seção 4).
