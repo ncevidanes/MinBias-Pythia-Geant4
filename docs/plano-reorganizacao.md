@@ -336,8 +336,8 @@ Tomadas pelo responsável pelo projeto em 2026-11-26.
   autorizada, e a ordem P não tem pré-requisito pendente. Observação: no
   commit `51240a8`, `physics-contract.md` ainda se declara candidato ao
   congelamento, e o repositório não contém o registro do fechamento do gate.
-  Esse registro deve entrar no PR 15.0 ou antes da produção, para que a
-  autorização fique rastreável.
+  O registro entrou no PR 15.0, em
+  `docs/cycle-14-minimum-bias-physics-production/gate-closure.md`.
 - **D3. Digitização: fora do escopo.** Forma de pulso, ruído, ADC e filtro
   ótimo ficam com outra ferramenta da cadeia de leitura. A lacuna 6 passa à
   categoria (c), e a saída por célula e por BC (lacuna 4) passa a ser a
