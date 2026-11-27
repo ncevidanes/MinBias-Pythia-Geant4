@@ -3,9 +3,8 @@
 ## Status
 
 Proposta em revisão. Nenhuma alteração de código, configuração ou evidência
-é feita por este documento. As decisões D1 a D3 foram tomadas em 2026-11-26
-e estão registradas na seção 7. A escolha da ordem (seção 4) continua
-pendente.
+é feita por este documento. As decisões D1 a D4 foram tomadas em 2026-11-26
+e estão registradas na seção 7. A ordem escolhida é produzir antes (P).
 
 Objetivo: um simulador de minimum bias completo e focado, com comandos
 simples e inteligíveis.
@@ -254,7 +253,20 @@ subconjunto de BCIDs da produção, com o comparador de partição do Ciclo 11.
 O tempo de produção não foi estimado: o Ciclo 9 tem medidas, mas para outra
 configuração.
 
-A escolha entre P, R1 e R2 é do responsável pelo projeto.
+### Ordem escolhida: P (decisão D4)
+
+1. PR 15.0: tag `cycle-14.1-pre-reorganization` em `51240a8` e registro do
+   fechamento do gate.
+2. Produção nominal na tag, com `./run.sh config/production.conf`, sem
+   sobrescritas. ROOT, manifesto, log, tempo, memória máxima e hashes ficam
+   registrados como evidência do Ciclo 14.
+3. PRs 15.1 a 15.6, nenhum deles tocando arquivos do contrato. Além dos casos
+   C1 a C5 da seção 5, cada PR que toca execução refaz um subconjunto de
+   BCIDs da produção e o compara com as entradas correspondentes do arquivo
+   de produção, com `scripts/analyze_partition_root.py`.
+4. PR 15.7, se for feito, vem por último. Como altera `app/main.cc`, exige
+   revisão do inventário de hashes antes de qualquer produção posterior, mas
+   não afeta a produção já feita.
 
 ## 5. Critério de aceite
 
@@ -309,7 +321,9 @@ Hashes dos ROOT, logs e resultados ficam em
 | 15.4 | Ciclos 7 a 11 para `validation/cycle-07` a `validation/cycle-11`: scripts, testes e `.conf`, com `parents[1]` ajustado | Seção 5; contagem do CTest inalterada |
 | 15.5 | Documentação: README centrado em `minbias`, guia `.tex`, seção 4 de `VALIDATION.md` como ponteiro, `validation/README.md` com a tabela ciclo, commit e pasta, contagens em `quality-gates.md` | Apenas documentação; links conferidos |
 | 15.6 | `run.sh` documentado como motor legado das campanhas históricas, sem mudança de código | `bash -n` e `audit_release.sh` |
-| 15.7 | Opcional: `--first-bcid` em `main.cc` e em `minbias run`; revisão do inventário de hashes | Seção 5 e gate completo do Ciclo 14; a posição depende da escolha da seção 4 |
+| 15.7 | Opcional: `--first-bcid` em `main.cc` e em `minbias run`; revisão do inventário de hashes | Seção 5 e gate completo do Ciclo 14; vem depois da produção (decisão D4) |
+
+Pela decisão D4, a produção nominal roda entre o PR 15.0 e o PR 15.1.
 
 ## 7. Decisões
 
@@ -329,4 +343,6 @@ Tomadas pelo responsável pelo projeto em 2026-11-26.
   categoria (c), e a saída por célula e por BC (lacuna 4) passa a ser a
   interface com essa ferramenta.
 
-Pendente: a escolha entre as ordens P, R1 e R2 (seção 4).
+- **D4. Ordem: produzir antes (P).** A produção nominal roda na tag
+  `cycle-14.1-pre-reorganization`, depois do PR 15.0 e antes do PR 15.1. A
+  sequência está na seção 4.
