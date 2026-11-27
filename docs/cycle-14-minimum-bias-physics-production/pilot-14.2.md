@@ -115,11 +115,12 @@ pesados. Tamanho: 12,0 MB por BC, cerca de 36 GB.
 `evidence/pilot-14.2/`:
 
 - `artifacts.sha256`: ROOT e manifestos, inclusive o shard B substituído;
-- manifestos dos três arquivos, `shard-b.conf` e `shard-b-superseded.conf`;
+- `shard-b.conf` e `shard-b-superseded.conf`;
 - `partition.json`, `repeat-shard-b.json`, `physics-summary.json`;
 - `timing.txt`, `pythia-messages.txt`;
 - `scripts/`: execução, comparação e resumo físico.
 
-Os ROOT (2,4 GB) não estão no repositório. Ficam em
+Os ROOT (2,4 GB) e os manifestos (`*.manifest.txt`, ignorados pelo
+`.gitignore` do repositório) não estão versionados. Ficam em
 `outputs/cycle14-2-pilot/` no disco de trabalho, conferíveis por
 `artifacts.sha256`.
