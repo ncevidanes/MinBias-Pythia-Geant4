@@ -1,0 +1,87 @@
+{
+  "bcs": 100,
+  "file": "<repo>/outputs/cycle14-2-pilot/monolithic.root",
+  "poisson_mu50": {
+    "dispersion_index": 0.8409816468888197,
+    "mean": 49.77,
+    "mean_pull": -0.32526911934580743,
+    "var": 41.85565656565656
+  },
+  "pythia_messages": {
+    "Error BeamRemnants::setKinematics": 1,
+    "Error SimpleSpaceShower::pT2nearThreshold": 1,
+    "Warning MultipartonInteractions::init": 1,
+    "Warning SimpleSpaceShower::pT2nextQCD": 2
+  },
+  "pythia_messages_per_bc": {
+    "Error BeamRemnants::setKinematics": 0.01,
+    "Error SimpleSpaceShower::pT2nearThreshold": 0.01,
+    "Warning MultipartonInteractions::init": 0.01,
+    "Warning SimpleSpaceShower::pT2nextQCD": 0.02
+  },
+  "summary": {
+    "generation_failures": {
+      "max": 0.0,
+      "mean": 0.0,
+      "min": 0.0,
+      "n": 100,
+      "var": 0.0
+    },
+    "generator_particles": {
+      "max": 38804.0,
+      "mean": 27422.67,
+      "min": 16810.0,
+      "n": 100,
+      "var": 28960919.374848492
+    },
+    "n_interactions_generated": {
+      "max": 66.0,
+      "mean": 49.77,
+      "min": 39.0,
+      "n": 100,
+      "var": 41.85565656565656
+    },
+    "n_interactions_requested": {
+      "max": 66.0,
+      "mean": 49.77,
+      "min": 39.0,
+      "n": 100,
+      "var": 41.85565656565656
+    },
+    "segmentation_failures": {
+      "max": 0.0,
+      "mean": 0.0,
+      "min": 0.0,
+      "n": 100,
+      "var": 0.0
+    },
+    "total_edep_mev": {
+      "max": 483543.94865281606,
+      "mean": 327819.4574515907,
+      "min": 174538.8210561121,
+      "n": 100,
+      "var": 5599116052.708559
+    },
+    "transported_particles": {
+      "max": 3890.0,
+      "mean": 2716.98,
+      "min": 1574.0,
+      "n": 100,
+      "var": 322481.45414141414
+    },
+    "unknown_pdg_particles": {
+      "max": 0.0,
+      "mean": 0.0,
+      "min": 0.0,
+      "n": 100,
+      "var": 0.0
+    },
+    "unlineaged_steps": {
+      "max": 0.0,
+      "mean": 0.0,
+      "min": 0.0,
+      "n": 100,
+      "var": 0.0
+    }
+  }
+}
