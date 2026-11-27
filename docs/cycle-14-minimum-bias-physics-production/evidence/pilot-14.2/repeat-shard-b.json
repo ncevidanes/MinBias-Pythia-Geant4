@@ -1,0 +1,51 @@
+{
+  "monolithic": "<repo>/outputs/cycle14-2-pilot/shard-b.root",
+  "shards": [
+    "<repo>/outputs/cycle14-2-pilot/superseded/shard-b.root"
+  ],
+  "trees": {
+    "events": {
+      "entries_monolithic": 50,
+      "entries_shards": 50,
+      "branches": 16,
+      "branch_sets_equal": true,
+      "excluded_local_fields": [
+        "event",
+        "run"
+      ],
+      "differing_branches": [],
+      "equal": true
+    },
+    "hits": {
+      "entries_monolithic": 9704101,
+      "entries_shards": 9704101,
+      "branches": 17,
+      "branch_sets_equal": true,
+      "excluded_local_fields": [
+        "event",
+        "run"
+      ],
+      "differing_branches": [],
+      "equal": true
+    },
+    "generator": {
+      "entries_monolithic": 0,
+      "entries_shards": 0,
+      "branches": 24,
+      "branch_sets_equal": true,
+      "excluded_local_fields": [
+        "event",
+        "run"
+      ],
+      "differing_branches": [],
+      "equal": true
+    }
+  },
+  "metadata_differences_outside_operational": {
+    "<repo>/outputs/cycle14-2-pilot/superseded/shard-b.root": [
+      "pythia_config"
+    ]
+  },
+  "metadata_equal": false,
+  "PARTITION_RESULT": "FAIL"
+}

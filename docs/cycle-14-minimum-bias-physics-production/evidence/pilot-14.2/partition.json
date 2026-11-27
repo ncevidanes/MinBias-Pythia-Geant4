@@ -1,0 +1,51 @@
+{
+  "monolithic": "<repo>/outputs/cycle14-2-pilot/monolithic.root",
+  "shards": [
+    "<repo>/outputs/cycle14-2-pilot/shard-a.root",
+    "<repo>/outputs/cycle14-2-pilot/shard-b.root"
+  ],
+  "trees": {
+    "events": {
+      "entries_monolithic": 100,
+      "entries_shards": 100,
+      "branches": 16,
+      "branch_sets_equal": true,
+      "excluded_local_fields": [
+        "event",
+        "run"
+      ],
+      "differing_branches": [],
+      "equal": true
+    },
+    "hits": {
+      "entries_monolithic": 19694262,
+      "entries_shards": 19694262,
+      "branches": 17,
+      "branch_sets_equal": true,
+      "excluded_local_fields": [
+        "event",
+        "run"
+      ],
+      "differing_branches": [],
+      "equal": true
+    },
+    "generator": {
+      "entries_monolithic": 0,
+      "entries_shards": 0,
+      "branches": 24,
+      "branch_sets_equal": true,
+      "excluded_local_fields": [
+        "event",
+        "run"
+      ],
+      "differing_branches": [],
+      "equal": true
+    }
+  },
+  "metadata_differences_outside_operational": {
+    "<repo>/outputs/cycle14-2-pilot/shard-a.root": [],
+    "<repo>/outputs/cycle14-2-pilot/shard-b.root": []
+  },
+  "metadata_equal": true,
+  "PARTITION_RESULT": "PASS"
+}

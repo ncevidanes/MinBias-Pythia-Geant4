@@ -1,0 +1,16 @@
+== monolithic
+ PYTHIA Warning in MultipartonInteractions::init: maximum increased by factor 4.139
+ PYTHIA Warning in SimpleSpaceShower::pT2nextQCD: weight above unity
+ PYTHIA Error in BeamRemnants::setKinematics: kinematics construction failed after retrying 10 times
+ PYTHIA Error in SimpleSpaceShower::pT2nearThreshold: stuck in loop
+ PYTHIA Warning in SimpleSpaceShower::pT2nextQCD: small daughter PDF
+== shard-a
+ PYTHIA Warning in MultipartonInteractions::init: maximum increased by factor 4.139
+ PYTHIA Warning in SimpleSpaceShower::pT2nextQCD: weight above unity
+ PYTHIA Error in BeamRemnants::setKinematics: kinematics construction failed after retrying 10 times
+ PYTHIA Error in SimpleSpaceShower::pT2nearThreshold: stuck in loop
+== shard-b
+ PYTHIA Warning in MultipartonInteractions::init: maximum increased by factor 4.139
+ PYTHIA Error in BeamRemnants::setKinematics: kinematics construction failed after retrying 10 times
+ PYTHIA Warning in SimpleSpaceShower::pT2nextQCD: weight above unity
+ PYTHIA Warning in SimpleSpaceShower::pT2nextQCD: small daughter PDF
